@@ -4,11 +4,13 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { SpkDetailEntity } from './SpkDetail.entity';
 import { MaterialEntity } from './Material.entity';
 
 @Entity('TB_R_SPK_STAGE')
+@Unique('UQ_SPK_STAGE_DETAIL_SEQ', ['spk_detail', 'seq'])
 export class SpkStageEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -52,7 +54,7 @@ export class SpkStageEntity {
   @Column({
     name: 'pic_id',
     type: 'varchar',
-    nullable: false,
+    nullable: true,
   })
   pic_id: string;
 
@@ -60,7 +62,7 @@ export class SpkStageEntity {
     name: 'start_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
-    nullable: false,
+    nullable: true,
   })
   start_at: Date;
 
@@ -68,7 +70,7 @@ export class SpkStageEntity {
     name: 'end_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
-    nullable: false,
+    nullable: true,
   })
   end_at: Date;
 

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateSpkStageUseCase, UpdateSpkStageUseCase } from '../../core/use-cases/spk';
 import type { CreateSpkStageDto } from './dto/create-spk-stage.dto';
 import type { UpdateSpkStageDto } from './dto/update-spk-stage.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { SpkStageEntity } from 'src/infrastructure/database/typeorm/entities/SpkStage.entity';
-import { Repository } from 'typeorm';
+import { SpkStageEntity } from '../../infrastructure/database/typeorm/entities/SpkStage.entity';
 
 @Injectable()
 export class SpkStageService {
@@ -66,7 +66,7 @@ export class SpkStageService {
     const stages = await this.stageRepo.find({
       where: { spk_detail: { id } },
       relations: { spk_detail: true },
-      order: { seq: 'ASC', created_dt: 'DESC' },
+      order: { seq: 'ASC' },
     });
 
     return stages.map((s) => ({

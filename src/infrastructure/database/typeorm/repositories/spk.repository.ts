@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { SpkEntity } from '../entities/Spk.entity';
 import type {
   SpkRepository as SpkRepositoryInterface,
@@ -104,6 +104,27 @@ export class SpkRepository implements SpkRepositoryInterface {
           const useQty = Number(bom.qty_required);
           const key = bi.material.id;
           materialUsage.set(key, Number((materialUsage.get(key) ?? 0) + useQty));
+        }
+
+        // Buat initial stages untuk setiap detail
+        const initialStages: Array<{ stage_name: string; seq: number }> = [
+          { stage_name: 'Cutting', seq: 1 },
+          { stage_name: 'Jahit', seq: 2 },
+          { stage_name: 'Buang Benang', seq: 3 },
+          { stage_name: 'Stiman', seq: 4 },
+          { stage_name: 'Packing', seq: 5 },
+        ];
+        for (const st of initialStages) {
+          const stage = new SpkStageEntity();
+          stage.spk_detail = savedDetail;
+          stage.stage_name = st.stage_name;
+          stage.seq = Number(st.seq);
+          stage.qty_in = 0;
+          stage.qty_reject = 0;
+          stage.pic_id = payload.created_by || 'system';
+          stage.status = 'PENDING';
+          stage.created_by = payload.created_by || 'system';
+          await mgr.getRepository(SpkStageEntity).save(stage);
         }
       }
 
@@ -417,15 +438,16 @@ export class SpkRepository implements SpkRepositoryInterface {
       if (!detail) {
         throw new Error(`SPK Detail not found: ${payload.spk_detail_id}`);
       }
-      // Duplicate check: same spk_detail_id + stage_name
-      const dup = await repo.findOne({
-        where: { spk_detail: { id: payload.spk_detail_id }, stage_name: payload.stage_name },
+      // Geser stage yang memiliki seq >= target secara descending untuk hindari konflik unik
+      const targetSeq = Number(payload.seq);
+      const toShift = await repo.find({
+        where: { spk_detail: { id: payload.spk_detail_id }, seq: MoreThanOrEqual(targetSeq) },
+        order: { seq: 'DESC' },
         relations: { spk_detail: true },
       });
-      if (dup) {
-        throw new Error(
-          `SPK Stage duplicate: detail=${payload.spk_detail_id}, stage=${payload.stage_name}`,
-        );
+      for (const s of toShift) {
+        s.seq = Number(s.seq) + 1;
+        await repo.save(s);
       }
       stage.spk_detail = detail;
       stage.stage_name = payload.stage_name;
@@ -456,8 +478,19 @@ export class SpkRepository implements SpkRepositoryInterface {
   }): Promise<{ id: string }> {
     return this.ormRepo.manager.transaction(async (mgr) => {
       const repo = mgr.getRepository(SpkStageEntity);
-      const stage = await repo.findOne({ where: { id: payload.id } });
+      const stage = await repo.findOne({ where: { id: payload.id }, relations: { spk_detail: true } });
       if (!stage) throw new Error(`SPK Stage not found: ${payload.id}`);
+
+      // If seq is being changed, ensure uniqueness within the same spk_detail
+      if (payload.seq != null) {
+        const dupSeq = await repo.findOne({
+          where: { spk_detail: { id: stage.spk_detail.id }, seq: Number(payload.seq) },
+          relations: { spk_detail: true },
+        });
+        if (dupSeq && dupSeq.id !== stage.id) {
+          throw new Error(`Seq sudah digunakan pada SPK Detail tersebut`);
+        }
+      }
 
       if (payload.stage_name != null) stage.stage_name = payload.stage_name;
       if (payload.seq != null) stage.seq = Number(payload.seq);
