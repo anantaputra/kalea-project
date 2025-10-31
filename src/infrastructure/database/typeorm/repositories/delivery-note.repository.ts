@@ -262,13 +262,14 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       relations: ['vendor'],
     });
     if (!header) return null;
-    const detailsRepo = this.ormRepo.manager.getRepository(
-      DeliveryNoteDetailEntity,
-    );
-    const rows = await detailsRepo.find({
-      where: { delivery_note: { id } },
-      relations: ['spk', 'spk_detail'],
-    });
+    const detailsRepo = this.ormRepo.manager.getRepository(DeliveryNoteDetailEntity);
+    const rows = await detailsRepo
+      .createQueryBuilder('d')
+      .leftJoinAndSelect('d.spk', 'spk')
+      .leftJoinAndSelect('d.spk_detail', 'sd')
+      .leftJoinAndSelect('sd.product_variant', 'pv')
+      .where('d.delivery_note_id = :id', { id })
+      .getMany();
 
     const toUiItemType = (t: string) => {
       if (!t) return '';
@@ -287,6 +288,83 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       labor_cost: Number(d.labor_cost) || 0,
       status: d.status,
     }));
+
+    const vendor = header.vendor
+      ? {
+          id: header.vendor.id,
+          name: header.vendor.name,
+          contact_person: (header.vendor as VendorEntity).contact_person ?? null,
+          phone: (header.vendor as VendorEntity).phone ?? null,
+          email: (header.vendor as VendorEntity).email ?? null,
+          address: (header.vendor as VendorEntity).address ?? null,
+          city: (header.vendor as VendorEntity).city ?? null,
+          province: (header.vendor as VendorEntity).province ?? null,
+          country: (header.vendor as VendorEntity).country ?? null,
+          zip_code: (header.vendor as VendorEntity).zip_code ?? null,
+          tax_number: (header.vendor as VendorEntity).tax_number ?? null,
+        }
+      : null;
+
+    const spkMap = new Map<string, any>();
+    for (const d of rows) {
+      const s = d.spk as SpkEntity | undefined;
+      if (s && !spkMap.has(s.id)) {
+        const spk_date = s.spk_date
+          ? (s.spk_date instanceof Date
+              ? s.spk_date.toISOString()
+              : new Date(s.spk_date as any).toISOString())
+          : null;
+        const deadline = s.deadline
+          ? (s.deadline instanceof Date
+              ? s.deadline.toISOString()
+              : new Date(s.deadline as any).toISOString())
+          : null;
+        spkMap.set(s.id, {
+          id: s.id,
+          spk_no: s.spk_no ?? '',
+          buyer: (s as any).buyer ?? null,
+          spk_date,
+          deadline,
+          status: (s as any).status ?? null,
+          notes: (s as any).notes ?? null,
+        });
+      }
+    }
+    const spk = Array.from(spkMap.values());
+
+    const spk_details = rows
+      .map((d) => {
+        const sd = d.spk_detail as SpkDetailEntity | undefined;
+        if (!sd) return null;
+        const pv = sd.product_variant as any;
+        const pvMapped = pv
+          ? {
+              id: pv.id,
+              product_name: pv.product_name,
+              size: pv.size,
+              color: pv.color ?? null,
+              barcode: pv.barcode ?? null,
+              sku: pv.sku ?? null,
+              price: Number(pv.price),
+              cost_price: Number(pv.cost_price),
+            }
+          : null;
+        const qty_order = Number(sd.qty_order) || 0;
+        const qty_done = Number(sd.qty_done) || 0;
+        const qty_reject = Number(sd.qty_reject) || 0;
+        const progressPct = qty_order > 0 ? Math.round((qty_done / qty_order) * 100) : 0;
+        return {
+          id: sd.id,
+          product_variants: pvMapped,
+          qty_order,
+          qty_done,
+          qty_reject,
+          progress: `${progressPct}%`,
+          status: sd.status,
+          cost_price: Number(sd.cost_price) || 0,
+        };
+      })
+      .filter(Boolean) as any[];
 
     return {
       id: header.id,
@@ -314,10 +392,13 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       })(),
       delivery_note_type: header.delivery_note_type,
       vendor_id: header.vendor?.id || '',
+      vendor,
       destination: header.destination,
       status: header.status,
       notes: header.notes ?? '',
       details,
+      spk,
+      spk_details,
     };
   }
 

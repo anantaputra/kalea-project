@@ -47,6 +47,19 @@ export type DeliveryNoteFullByIdResult = {
   delivery_note_date: string;
   delivery_note_type: string;
   vendor_id: string;
+  vendor?: {
+    id: string;
+    name: string;
+    contact_person: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    city: string | null;
+    province: string | null;
+    country: string | null;
+    zip_code: string | null;
+    tax_number: string | null;
+  } | null;
   destination: string;
   status: string;
   notes: string | null;
@@ -60,6 +73,34 @@ export type DeliveryNoteFullByIdResult = {
     qty_in: number;
     labor_cost: number;
     status: string;
+  }>;
+  spk?: Array<{
+    id: string;
+    spk_no: string;
+    buyer: string | null;
+    spk_date: string | null; // ISO timestamp
+    deadline: string | null; // ISO timestamp
+    status: string | null;
+    notes: string | null;
+  }>;
+  spk_details?: Array<{
+    id: string;
+    product_variants: {
+      id: string;
+      product_name: string;
+      size: string;
+      color: string | null;
+      barcode: string | null;
+      sku: string | null;
+      price: number;
+      cost_price: number;
+    } | null;
+    qty_order: number;
+    qty_done: number;
+    qty_reject: number;
+    progress: string; // percentage like '0%'
+    status: string;
+    cost_price: number;
   }>;
 };
 

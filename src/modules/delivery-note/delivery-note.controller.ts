@@ -284,6 +284,38 @@ export class DeliveryNoteController {
             zip_code: '12345',
             tax_number: '01.234.567.8-901.000'
           },
+          spk: [
+            {
+              id: '76f4d14c-946a-4480-8490-f5896cf617c8',
+              spk_no: '003/SPK/X/2025',
+              buyer: 'PT Supplier Utama',
+              spk_date: '2025-10-31T00:00:00.000Z',
+              deadline: '2025-10-31T00:00:00.000Z',
+              status: 'PENDING',
+              notes: '',
+            },
+          ],
+          spk_details: [
+            {
+              id: 'a0453000-3b67-4b5b-a521-6e612f52d156',
+              product_variants: {
+                id: '891755ce-d410-4939-af99-c2ea83efdac6',
+                product_name: 'Kalea Basic Tee - Putih - M',
+                size: 'M',
+                color: 'Putih',
+                barcode: '1002002002001',
+                sku: 'KBT-WHT-M',
+                price: 150000,
+                cost_price: 95000
+              },
+              qty_order: 50,
+              qty_done: 0,
+              qty_reject: 0,
+              progress: '0%',
+              status: 'PENDING',
+              cost_price: 95000,
+            },
+          ],
           destination: 'Gudang Utama',
           status: 'PENDING',
           notes: 'Catatan pengiriman'
