@@ -136,7 +136,7 @@ export class MaterialStockService {
       undefined,
       dto.material_id,
       dto.qty,
-      true,
+      false,
       'system',
       new Date(),
       null,
@@ -172,14 +172,20 @@ export class MaterialStockService {
   }
 
   async update(id: string, dto: UpdateMaterialStockDto, lang?: string) {
+    // Ambil data existing untuk mempertahankan created_* dan is_approved
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      throw new Error(`Material Stock not found: ${id}`);
+    }
+
     const entity = new MaterialStock(
       id,
-      dto.material_id,
-      dto.qty,
-      true,
-      'system',
-      new Date(),
-      'system',
+      dto.material_id ?? existing.material_id,
+      dto.qty ?? existing.qty,
+      existing.is_approved, // jangan ubah nilai is_approved pada update biasa
+      existing.created_by ?? 'system',
+      existing.created_dt ?? new Date(),
+      dto.user_id ?? existing.changed_by ?? 'system',
       new Date(),
     );
     const saved = await this.updateUseCase.execute(entity);

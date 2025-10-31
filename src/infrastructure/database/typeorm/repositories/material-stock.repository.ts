@@ -59,7 +59,10 @@ export class MaterialStockRepository implements MaterialStockRepositoryInterface
       (row as any).material = { id: entity.material_id } as MaterialEntity as any;
     }
     row.qty = Number(entity.qty ?? 0);
-    row.is_approved = entity.is_approved ?? true;
+    // Jangan menimpa nilai is_approved jika tidak disediakan secara eksplisit
+    if (typeof entity.is_approved === 'boolean') {
+      row.is_approved = entity.is_approved;
+    }
     row.created_by = entity.created_by ?? 'system';
     row.created_dt = entity.created_dt ?? new Date();
     row.changed_by = entity.changed_by ?? null as any;
