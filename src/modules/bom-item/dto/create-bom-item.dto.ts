@@ -15,6 +15,7 @@ export class CreateBomItemDto {
   condition_color?: string;
 
   @IsNumber()
+  @IsOptional()
   waste_pct: number;
 
   @IsString()
