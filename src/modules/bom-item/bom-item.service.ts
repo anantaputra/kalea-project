@@ -9,6 +9,8 @@ import { DeleteBomItemUseCase } from '../../core/use-cases/bom-item/delete-bom-i
 import { FindBomItemsByProductVariantIdUseCase } from '../../core/use-cases/bom-item/find-bom-items-by-product-variant-id.usecase';
 import type { CreateBomItemDto } from './dto/create-bom-item.dto';
 import type { UpdateBomItemDto } from './dto/update-bom-item.dto';
+import type { CreateBomItemBulkDto } from './dto/create-bom-item-bulk.dto';
+import type { UpdateBomItemBulkDto } from './dto/update-bom-item-bulk.dto';
 
 @Injectable()
 export class BomItemService {
@@ -53,6 +55,54 @@ export class BomItemService {
     return this.mapToResponse(created);
   }
 
+  async createBulk(dto: CreateBomItemBulkDto, _lang?: string) {
+    const existingItems = await this.findByProductVariantIdUseCase.execute(
+      dto.product_variant_id,
+    );
+
+    for (const m of dto.materials) {
+      const match = existingItems.find(
+        (ex) => ex.material_id === m.material_id,
+      );
+      if (match) {
+        // Update qty_per_unit untuk kombinasi product_variant_id + material_id yang sudah ada
+        const entity = new BomItem(
+          match.id,
+          dto.product_variant_id,
+          m.material_id,
+          Number(m.qty_per_unit),
+          match.condition_color ?? null,
+          match.waste_pct ?? 0,
+          match.created_by,
+          match.created_dt,
+          dto.user_id ?? match.changed_by ?? 'system',
+          new Date(),
+        );
+        await this.updateUseCase.execute(entity);
+      } else {
+        // Buat baru jika belum ada
+        const entity = new BomItem(
+          undefined,
+          dto.product_variant_id,
+          m.material_id,
+          Number(m.qty_per_unit),
+          null,
+          0,
+          dto.user_id ?? 'system',
+          new Date(),
+          dto.user_id ?? 'system',
+          new Date(),
+        );
+        await this.createUseCase.execute(entity);
+      }
+    }
+
+    const items = await this.findByProductVariantIdUseCase.execute(
+      dto.product_variant_id,
+    );
+    return this.mapBulkResponse(dto.product_variant_id, items);
+  }
+
   async update(id: string, dto: UpdateBomItemDto, lang?: string) {
     const existing = await this.findByIdUseCase.execute(id);
     if (!existing) {
@@ -72,6 +122,56 @@ export class BomItemService {
     );
     const updated = await this.updateUseCase.execute(entity);
     return this.mapToResponse(updated);
+  }
+
+  async updateBulk(productVariantId: string, dto: UpdateBomItemBulkDto, _lang?: string) {
+    const pvId = productVariantId || dto.product_variant_id;
+    const existingItems = await this.findByProductVariantIdUseCase.execute(pvId);
+    const providedSet = new Set(dto.materials.map((m) => m.material_id));
+
+    // Hapus item yang tidak ada di daftar baru
+    for (const ex of existingItems) {
+      if (!providedSet.has(ex.material_id!)) {
+        await this.deleteUseCase.execute(ex.id!);
+      }
+    }
+
+    // Upsert untuk setiap material yang diberikan
+    for (const m of dto.materials) {
+      const match = existingItems.find((ex) => ex.material_id === m.material_id);
+      if (match) {
+        const entity = new BomItem(
+          match.id,
+          pvId,
+          m.material_id,
+          Number(m.qty_per_unit),
+          match.condition_color ?? null,
+          match.waste_pct ?? 0,
+          match.created_by,
+          match.created_dt,
+          dto.user_id ?? match.changed_by ?? 'system',
+          new Date(),
+        );
+        await this.updateUseCase.execute(entity);
+      } else {
+        const entity = new BomItem(
+          undefined,
+          pvId,
+          m.material_id,
+          Number(m.qty_per_unit),
+          null,
+          0,
+          dto.user_id ?? 'system',
+          new Date(),
+          dto.user_id ?? 'system',
+          new Date(),
+        );
+        await this.createUseCase.execute(entity);
+      }
+    }
+
+    const items = await this.findByProductVariantIdUseCase.execute(pvId);
+    return this.mapBulkResponse(pvId, items);
   }
 
   async remove(id: string, _lang?: string): Promise<void> {
@@ -117,6 +217,34 @@ export class BomItemService {
       created_dt: e.created_dt,
       changed_by: e.changed_by,
       changed_dt: e.changed_dt,
+    };
+  }
+
+  private mapBulkResponse(product_variant_id: string, items: BomItem[]) {
+    const pv = items[0]?.product_variant
+      ? {
+          id: items[0]!.product_variant!.id,
+          product_name: items[0]!.product_variant!.product_name,
+          size: items[0]!.product_variant!.size,
+          color: items[0]!.product_variant!.color,
+          sku: items[0]!.product_variant!.sku,
+        }
+      : { id: product_variant_id };
+
+    const materials = items
+      .filter((i) => !!i.material)
+      .map((i) => ({
+        id: i.material!.id,
+        material_code: i.material!.material_code,
+        material_name: i.material!.material_name,
+        material_category: i.material!.material_category,
+        unit_of_measure: i.material!.unit_of_measure,
+      }));
+
+    return {
+      id: product_variant_id,
+      product_variant: pv,
+      materials,
     };
   }
 }

@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { CreateBomItemDto } from './dto/create-bom-item.dto';
 import { UpdateBomItemDto } from './dto/update-bom-item.dto';
+import { CreateBomItemBulkDto } from './dto/create-bom-item-bulk.dto';
+import { UpdateBomItemBulkDto } from './dto/update-bom-item-bulk.dto';
 import { BomItemService } from './bom-item.service';
 import {
   ApiTags,
@@ -85,12 +87,12 @@ export class BomItemController {
     return {
       success: true,
       data: items,
-      message: tRetrieved('Article', lang),
+      message: tRetrieved('Bom Item', lang),
       meta: { total, start, length, total_pages },
     };
   }
 
-  @ApiOperation({ summary: 'Ambil satu Article berdasarkan id' })
+  @ApiOperation({ summary: 'Ambil satu Bom Item berdasarkan id' })
   @ApiHeader({
     name: 'accept-language',
     description: 'Locale untuk pesan respons (default id)',
@@ -130,7 +132,7 @@ export class BomItemController {
   async findOne(@Param('id') id: string, @Headers() headers: Record<string, string>) {
     const lang = headers['accept-language'];
     const data = await this.service.findOne(id, lang);
-    return ok(data, tRetrieved('Article', lang));
+    return ok(data, tRetrieved('Bom Item', lang));
   }
 
   @ApiOperation({ summary: 'Buat Article baru' })
@@ -149,6 +151,8 @@ export class BomItemController {
           product_variant_id: 'e9bcdfad-2e12-49e8-8857-9b04170ffda3',
           material_id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
           qty_per_unit: 2.5,
+          condition_color: 'Merah',
+          waste_pct: 5.0,
           user_id: 'system',
         },
       },
@@ -186,10 +190,72 @@ export class BomItemController {
   async create(@Body() dto: CreateBomItemDto, @Headers() headers: Record<string, string>) {
     const lang = headers['accept-language'];
     const data = await this.service.create(dto, lang);
-    return created(data, tCreated('Article', lang));
+    return created(data, tCreated('Bom Item', lang));
   }
 
-  @ApiOperation({ summary: 'Update Article' })
+  @ApiOperation({ summary: 'Buat Bom Item baru Bulk' })
+  @ApiHeader({
+    name: 'accept-language',
+    description: 'Locale untuk pesan respons (default id)',
+    required: false,
+    schema: { type: 'string', default: 'id' },
+  })
+  @ApiBody({
+    type: CreateBomItemBulkDto,
+    examples: {
+      default: {
+        summary: 'Contoh body',
+        value: {
+          product_variant_id: 'e9bcdfad-2e12-49e8-8857-9b04170ffda3',
+          materials: [
+            {
+              material_id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
+              qty_per_unit: 2.5,
+            },
+          ],
+          user_id: 'system',
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Response dibungkus oleh TransformResponseInterceptor',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: '525a58dc-55ea-495d-9c78-489bdcaa8f01',
+          product_variant: {
+            id: 'e9bcdfad-2e12-49e8-8857-9b04170ffda3',
+            product_name: 'Dress Lengan Pendek - Merah - L',
+            size: 'L',
+            color: 'Merah',
+            sku: 'KLP-RED-L'
+          },
+          materials: [
+            {
+              id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
+              material_code: 'MAT001',
+              material_name: 'Kain Cotton',
+              material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
+              unit_of_measure: 'YARD'
+            },
+          ],
+        },
+        message: 'Created',
+        meta: null,
+        timestamp: '2024-10-01T10:00:00.000Z',
+      },
+    },
+  })
+  @Post('bulk')
+  async createBulk(@Body() dto: CreateBomItemBulkDto, @Headers() headers: Record<string, string>) {
+    const lang = headers['accept-language'];
+    const data = await this.service.createBulk(dto, lang);
+    return created(data, tCreated('Bom Item', lang));
+  }
+
+  @ApiOperation({ summary: 'Update Bom Item' })
   @ApiHeader({
     name: 'accept-language',
     description: 'Locale untuk pesan respons (default id)',
@@ -206,6 +272,8 @@ export class BomItemController {
           product_variant_id: 'e9bcdfad-2e12-49e8-8857-9b04170ffda3',
           material_id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
           qty_per_unit: 2.5,
+          condition_color: 'Merah',
+          waste_pct: 5.0,
           user_id: 'system',
         },
       },
@@ -243,10 +311,73 @@ export class BomItemController {
   async update(@Param('id') id: string, @Body() dto: UpdateBomItemDto, @Headers() headers: Record<string, string>) {
     const lang = headers['accept-language'];
     const data = await this.service.update(id, dto, lang);
-    return updated(data, tUpdated('Article', lang));
+    return updated(data, tUpdated('Bom Item', lang));
   }
 
-  @ApiOperation({ summary: 'Hapus Article' })
+  @ApiOperation({ summary: 'Update Bom Item Bulk' })
+  @ApiHeader({
+    name: 'accept-language',
+    description: 'Locale untuk pesan respons (default id)',
+    required: false,
+    schema: { type: 'string', default: 'id' },
+  })
+  @ApiParam({ name: 'id', example: '525a58dc-55ea-495d-9c78-489bdcaa8f0' })
+  @ApiBody({
+    type: UpdateBomItemBulkDto,
+    examples: {
+      default: {
+        summary: 'Contoh body',
+        value: {
+          product_variant_id: 'e9bcdfad-2e12-49e8-8857-9b04170ffda3',
+          materials: [
+            {
+              material_id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
+              qty_per_unit: 2.5,
+            },
+          ],
+          user_id: 'system',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Response dibungkus oleh TransformResponseInterceptor',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: '525a58dc-55ea-495d-9c78-489bdcaa8f01',
+          product_variant: {
+            id: 'e9bcdfad-2e12-49e8-8857-9b04170ffda3',
+            product_name: 'Dress Lengan Pendek - Merah - L',
+            size: 'L',
+            color: 'Merah',
+            sku: 'KLP-RED-L'
+          },
+          materials: [
+            {
+              id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
+              material_code: 'MAT001',
+              material_name: 'Kain Cotton',
+              material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
+              unit_of_measure: 'YARD'
+            },
+          ],
+        },
+        message: 'Updated',
+        meta: null,
+        timestamp: '2024-10-01T11:00:00.000Z',
+      },
+    },
+  })
+  @Put('bulk/:id')
+  async updateBulk(@Param('id') id: string, @Body() dto: UpdateBomItemBulkDto, @Headers() headers: Record<string, string>) {
+    const lang = headers['accept-language'];
+    const data = await this.service.updateBulk(id, dto, lang);
+    return updated(data, tUpdated('Bom Item', lang));
+  }
+
+  @ApiOperation({ summary: 'Hapus Bom Item' })
   @ApiHeader({
     name: 'accept-language',
     description: 'Locale untuk pesan respons (default id)',
@@ -270,6 +401,6 @@ export class BomItemController {
   async remove(@Param('id') id: string, @Headers() headers: Record<string, string>) {
     const lang = headers['accept-language'];
     const data = await this.service.remove(id, lang);
-    return ok(data, tDeleted('Article', lang));
+    return ok(data, tDeleted('Bom Item', lang));
   }
 }
