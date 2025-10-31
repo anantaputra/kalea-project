@@ -15,6 +15,8 @@ import type { UpdateSpkDto } from './dto/update-spk.dto';
 import type { ApprovalSpkDto } from './dto/approval-spk.dto';
 import { SPK_REPOSITORY } from 'src/core/domain/repositories/spk.repository.interface';
 import { SpkRepository } from 'src/infrastructure/database/typeorm/repositories/spk.repository';
+import { FindSystemMasterByTypeCdUseCase } from 'src/core/use-cases/system-master';
+import { UnitOfMeasureType } from 'src/core/domain/value-objects/unit-of-measure-id.vo';
 
 @Injectable()
 export class SpkService {
@@ -27,6 +29,7 @@ export class SpkService {
     private readonly updateFullUseCase: UpdateSpkFullUseCase,
     private readonly approveUseCase: ApproveSpkUseCase,
     @Inject(SPK_REPOSITORY) private readonly repo: SpkRepository,
+    private readonly findSystemMasterByTypeCdUseCase: FindSystemMasterByTypeCdUseCase,
   ) {}
 
   private mapHeaderToResponse(entity: Spk) {
@@ -115,7 +118,52 @@ export class SpkService {
       throw new NotFoundException(tNotFound('Spk', lang));
     }
     const header = this.mapHeaderToResponse(full.header as Spk);
-    return { ...header, details: full.details };
+
+    // Aggregate BOMs across all details: sum qty_required per material_id
+    const bomItems = (full.details ?? []).flatMap((d: any) => d.bom ?? []);
+    const grouped = new Map<string, { material_id: string; material_name: string; qty: number; unit_cd: string }>();
+    for (const b of bomItems) {
+      const key = b.material_id ?? '';
+      if (!key) continue;
+      const prev = grouped.get(key);
+      const qty = Number(b.qty_required ?? 0);
+      if (prev) {
+        prev.qty = Number((prev.qty + qty).toFixed(4));
+      } else {
+        grouped.set(key, {
+          material_id: key,
+          material_name: b.material_name ?? '',
+          qty: Number(qty.toFixed(4)),
+          unit_cd: b.unit_of_measure ?? '',
+        });
+      }
+    }
+
+    const boms = await Promise.all(
+      Array.from(grouped.values()).map(async (g) => {
+        let unitLabel = g.unit_cd;
+        try {
+          if (g.unit_cd) {
+            const uom = await this.findSystemMasterByTypeCdUseCase.execute(
+              UnitOfMeasureType.UNIT_OF_MEASURE,
+              g.unit_cd,
+              lang,
+            );
+            unitLabel = uom?.system_value ?? g.unit_cd;
+          }
+        } catch {
+          unitLabel = g.unit_cd;
+        }
+        return {
+          material_id: g.material_id,
+          material_name: g.material_name,
+          qty: g.qty,
+          unit_of_measure: unitLabel,
+        };
+      }),
+    );
+
+    return { ...header, details: full.details, boms };
   }
 
   async create(dto: CreateSpkDto, _lang?: string) {

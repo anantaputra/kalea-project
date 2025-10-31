@@ -58,22 +58,22 @@ export type SpkFullByIdResult = {
       qty_required: number;
       waste_pct: number;
     }>;
-    stages: Array<{
-      id: string;
-      spk_detail_id: string;
-      stage_name: string;
-      seq: number;
-      qty_in: number;
-      qty_reject: number;
-      pic_id: string;
-      start_at: Date;
-      end_at: Date;
-      status: string;
-      created_by: string;
-      created_dt: Date;
-      changed_by: string | null;
-      changed_dt: Date | null;
-    }>;
+    // stages: Array<{
+    //   id: string;
+    //   spk_detail_id: string;
+    //   stage_name: string;
+    //   seq: number;
+    //   qty_in: number;
+    //   qty_reject: number;
+    //   pic_id: string;
+    //   start_at: Date;
+    //   end_at: Date;
+    //   status: string;
+    //   created_by: string;
+    //   created_dt: Date;
+    //   changed_by: string | null;
+    //   changed_dt: Date | null;
+    // }>;
   }>;
 };
 

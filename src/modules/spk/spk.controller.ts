@@ -150,17 +150,16 @@ export class SpkController {
               qty_reject: 0,
               progress: '0%',
               status: 'PENDING',
-              bom: [
-                {
-                  id: '10b0fdb5-9173-4dbc-9b43-f709fdda3324',
-                  material_id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-                  qty_per_unit: 1.8,
-                  qty_required: 180,
-                  waste_pct: 3
-                },
-              ]
             },
-          ]
+          ],
+          boms: [
+            {
+              material_id: '',
+              material_name: '',
+              qty: '',
+              unit_of_measure: '',
+            },
+          ],
         },
         message: null,
         meta: null,
@@ -406,4 +405,11 @@ export class SpkController {
     const data = await this.service.approval(dto, lang);
     return updated(data, tUpdated('Spk', lang));
   }
+
+  // @Get('history-surat-jalan/:id')
+  // async getHistoryDeliveryNote(@Param('id') id: string, @Headers() headers: Record<string, string>) {
+  //   const lang = headers['accept-language'];
+  //   const data = await this.service.getHistoryDeliveryNote(id);
+  //   return ok(data, tRetrieved('History Surat Jalan', lang));
+  // }
 }
