@@ -27,6 +27,8 @@ import { SystemMasterEntity } from '../../infrastructure/database/typeorm/entiti
 import { SYSTEM_MASTER_REPOSITORY, SystemMasterRepository } from '../../core/domain/repositories/system-master.repository.interface';
 import { SystemMasterRepository as SystemMasterRepositoryClass } from '../../infrastructure/database/typeorm/repositories/system-master.repository';
 import { FindSystemMasterByTypeCdUseCase } from '../../core/use-cases/system-master';
+import { DeliveryNoteEntity } from '../../infrastructure/database/typeorm/entities/DeliveryNote.entity';
+import { DeliveryNoteDetailEntity } from '../../infrastructure/database/typeorm/entities/DeliveryNoteDetail.entity';
 
 
 @Module({
@@ -41,6 +43,8 @@ import { FindSystemMasterByTypeCdUseCase } from '../../core/use-cases/system-mas
       MaterialEntity,
       ApprovalTransactionEntity,
       SystemMasterEntity,
+      DeliveryNoteEntity,
+      DeliveryNoteDetailEntity,
     ]),
   ],
   controllers: [SpkController],

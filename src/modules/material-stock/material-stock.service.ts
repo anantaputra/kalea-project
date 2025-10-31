@@ -7,6 +7,9 @@ import { MATERIALS_REPOSITORY } from '../../core/domain/repositories/material.re
 import type { MaterialsRepository } from '../../core/domain/repositories/material.repository.interface';
 import type { CreateMaterialStockDto } from './dto/create-material-stock.dto';
 import type { UpdateMaterialStockDto } from './dto/update-material-stock.dto';
+import { FindSystemMasterByTypeCdUseCase } from '../../core/use-cases/system-master';
+import { UnitOfMeasureType } from 'src/core/domain/value-objects/unit-of-measure-id.vo';
+import { MaterialCategoryType } from 'src/core/domain/value-objects/material-category-id.vo';
 
 @Injectable()
 export class MaterialStockService {
@@ -19,6 +22,7 @@ export class MaterialStockService {
     private readonly repo: MaterialStockRepository,
     @Inject(MATERIALS_REPOSITORY)
     private readonly materialsRepo: MaterialsRepository,
+    private readonly findByTypeCdUseCase: FindSystemMasterByTypeCdUseCase,
   ) {}
 
   async findAllPaginated(start: number, length: number, lang?: string) {
@@ -28,6 +32,24 @@ export class MaterialStockService {
     const items = await Promise.all(
       slice.map(async (s) => {
         const m = s.material_id ? await this.materialsRepo.findById(s.material_id) : null;
+        const catLabel = m?.material_category
+          ? (
+              await this.findByTypeCdUseCase.execute(
+                MaterialCategoryType.MATERIAL_CATEGORY,
+                m.material_category,
+                lang,
+              )
+            )?.system_value ?? m.material_category ?? ''
+          : '';
+        const uomLabel = m?.unit_of_measure
+          ? (
+              await this.findByTypeCdUseCase.execute(
+                UnitOfMeasureType.UNIT_OF_MEASURE,
+                m.unit_of_measure,
+                lang,
+              )
+            )?.system_value ?? m.unit_of_measure ?? ''
+          : '';
         return {
           id: s.id ?? '',
           material: m
@@ -35,8 +57,8 @@ export class MaterialStockService {
                 id: m.id ?? '',
                 material_code: m.material_code ?? '',
                 material_name: m.material_name ?? '',
-                material_category: m.material_category ?? '',
-                unit_of_measure: m.unit_of_measure ?? '',
+                material_category: catLabel,
+                unit_of_measure: uomLabel,
                 barcode: m.barcode ?? '',
               }
             : {
@@ -63,6 +85,24 @@ export class MaterialStockService {
     const s = await this.repo.findById(id);
     if (!s) return null;
     const m = s.material_id ? await this.materialsRepo.findById(s.material_id) : null;
+    const catLabel = m?.material_category
+      ? (
+          await this.findByTypeCdUseCase.execute(
+            MaterialCategoryType.MATERIAL_CATEGORY,
+            m.material_category,
+            lang,
+          )
+        )?.system_value ?? m.material_category ?? ''
+      : '';
+    const uomLabel = m?.unit_of_measure
+      ? (
+          await this.findByTypeCdUseCase.execute(
+            UnitOfMeasureType.UNIT_OF_MEASURE,
+            m.unit_of_measure,
+            lang,
+          )
+        )?.system_value ?? m.unit_of_measure ?? ''
+      : '';
     return {
       id: s.id ?? '',
       material: m
@@ -70,8 +110,8 @@ export class MaterialStockService {
             id: m.id ?? '',
             material_code: m.material_code ?? '',
             material_name: m.material_name ?? '',
-            material_category: m.material_category ?? '',
-            unit_of_measure: m.unit_of_measure ?? '',
+            material_category: catLabel,
+            unit_of_measure: uomLabel,
             barcode: m.barcode ?? '',
           }
         : {

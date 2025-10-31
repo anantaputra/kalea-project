@@ -1,4 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   CreateSpkUseCase,
   UpdateSpkUseCase,
@@ -17,6 +19,8 @@ import { SPK_REPOSITORY } from 'src/core/domain/repositories/spk.repository.inte
 import { SpkRepository } from 'src/infrastructure/database/typeorm/repositories/spk.repository';
 import { FindSystemMasterByTypeCdUseCase } from 'src/core/use-cases/system-master';
 import { UnitOfMeasureType } from 'src/core/domain/value-objects/unit-of-measure-id.vo';
+import { DeliveryNoteDetailEntity } from 'src/infrastructure/database/typeorm/entities/DeliveryNoteDetail.entity';
+import { DeliveryNoteEntity } from 'src/infrastructure/database/typeorm/entities/DeliveryNote.entity';
 
 @Injectable()
 export class SpkService {
@@ -30,6 +34,8 @@ export class SpkService {
     private readonly approveUseCase: ApproveSpkUseCase,
     @Inject(SPK_REPOSITORY) private readonly repo: SpkRepository,
     private readonly findSystemMasterByTypeCdUseCase: FindSystemMasterByTypeCdUseCase,
+    @InjectRepository(DeliveryNoteDetailEntity)
+    private readonly dnDetailRepo: Repository<DeliveryNoteDetailEntity>,
   ) {}
 
   private mapHeaderToResponse(entity: Spk) {
@@ -163,7 +169,40 @@ export class SpkService {
       }),
     );
 
-    return { ...header, details: full.details, boms };
+    // Build Surat Jalan history from Delivery Note details where spk_id matches
+    const dnRows = await this.dnDetailRepo.find({
+      where: { spk: { id } },
+      relations: ['delivery_note', 'delivery_note.vendor', 'spk'],
+    });
+    const toDate = (d: any) => {
+      if (!d) return '';
+      if (d instanceof Date) return d.toISOString().split('T')[0];
+      if (typeof d === 'string') return d;
+      try {
+        const parsed = new Date(d);
+        return Number.isNaN(parsed.getTime())
+          ? ''
+          : parsed.toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    };
+    const surat_jalan_history = dnRows.map((row) => {
+      const dn: DeliveryNoteEntity = row.delivery_note as any;
+      return {
+        id: row.id,
+        delivery_note_no: dn?.delivery_note_no ?? '',
+        delivery_note_date: toDate(dn?.delivery_note_date ?? ''),
+        delivery_note_type: (dn?.delivery_note_type ?? '').toString().toUpperCase(),
+        vendor_id: dn?.vendor?.id ?? '',
+        vendor_name: dn?.vendor?.name ?? '',
+        destination: dn?.destination ?? '',
+        status: dn?.status ?? '',
+        notes: dn?.notes ?? '',
+      };
+    });
+
+    return { ...header, details: full.details, boms, surat_jalan_history };
   }
 
   async create(dto: CreateSpkDto, _lang?: string) {
