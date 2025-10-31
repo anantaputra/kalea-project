@@ -23,10 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { FindBaseDto } from 'src/core/find-base.dto';
 import { tCreated, tDeleted, tRetrieved, tUpdated } from 'src/core/common/i18n/messages';
-import { ok } from 'assert';
-import { created, updated } from 'src/infrastructure/http/response';
-
-@ApiTags('Articles')
+import { ok, created, updated } from 'src/infrastructure/http/response';@ApiTags('Articles')
 @Controller('articles')
 export class ArticleController {
   constructor(private readonly service: ArticleService) {}

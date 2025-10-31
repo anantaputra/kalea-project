@@ -39,6 +39,17 @@ export class ProductVariantRepository
     return row ? this.mapToDomain(row) : null;
   }
 
+  async findByArticleId(articleId: string): Promise<ProductVariant[]> {
+    const rows = await this.ormRepo.find({
+      where: { 
+        article: { id: articleId },
+        is_active: true 
+      },
+      relations: ['article'],
+    });
+    return rows.map((row) => this.mapToDomain(row));
+  }
+
   async create(entity: ProductVariant): Promise<ProductVariant> {
     const row = this.mapToOrm(entity);
     const saved = await this.ormRepo.save(row);

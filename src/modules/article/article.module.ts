@@ -6,10 +6,14 @@ import { CreateArticleUseCase, UpdateArticleUseCase, FindAllArticleUseCase, Find
 import { ArticleRepository, ARTICLE_REPOSITORY } from '../../core/domain/repositories/article.repository.interface';
 import { ArticleRepository as ArticleRepositoryClass } from '../../infrastructure/database/typeorm/repositories/article.repository';
 import { ArticleEntity } from '../../infrastructure/database/typeorm/entities/Article.entity';
+import { ProductVariantEntity } from '../../infrastructure/database/typeorm/entities/ProductVariant.entity';
+import { ProductVariantRepository, PRODUCT_VARIANT_REPOSITORY } from '../../core/domain/repositories/product-variant.repository.interface';
+import { ProductVariantRepository as ProductVariantRepositoryClass } from '../../infrastructure/database/typeorm/repositories/product-variant.repository';
+import { FindProductVariantsByArticleIdUseCase } from 'src/core/use-cases/product-variant/find-product-variants-by-article-id.usecase';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ArticleEntity])],
+  imports: [TypeOrmModule.forFeature([ArticleEntity, ProductVariantEntity])],
   controllers: [ArticleController],
   providers: [
     ArticleService,
@@ -38,6 +42,13 @@ import { ArticleEntity } from '../../infrastructure/database/typeorm/entities/Ar
       provide: DeleteArticleUseCase,
       useFactory: (repo: ArticleRepository) => new DeleteArticleUseCase(repo),
       inject: [ARTICLE_REPOSITORY],
+    },
+    // ProductVariant wiring for finding variants by article_id
+    { provide: PRODUCT_VARIANT_REPOSITORY, useClass: ProductVariantRepositoryClass },
+    {
+      provide: FindProductVariantsByArticleIdUseCase,
+      useFactory: (repo: ProductVariantRepository) => new FindProductVariantsByArticleIdUseCase(repo),
+      inject: [PRODUCT_VARIANT_REPOSITORY],
     },
   ],
 })

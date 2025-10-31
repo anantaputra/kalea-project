@@ -5,6 +5,7 @@ import type { CreateArticleDto } from './dto/create-article.dto';
 import type { UpdateArticleDto } from './dto/update-article.dto';
 import { randomUUID } from 'crypto';
 import { tNotFound } from 'src/core/common/i18n/messages';
+import { FindProductVariantsByArticleIdUseCase } from 'src/core/use-cases/product-variant/find-product-variants-by-article-id.usecase';
 
 @Injectable()
 export class ArticleService {
@@ -14,6 +15,7 @@ export class ArticleService {
     private readonly findAllUseCase: FindAllArticleUseCase,
     private readonly findByIdUseCase: FindArticleByIdUseCase,
     private readonly deleteUseCase: DeleteArticleUseCase,
+    private readonly findProductVariantsByArticleIdUseCase: FindProductVariantsByArticleIdUseCase,
   ) {}
 
   private mapToResponse(entity: Article) {
@@ -26,6 +28,19 @@ export class ArticleService {
       created_dt: entity.created_dt ? entity.created_dt.toISOString() : null,
       changed_by: entity.changed_by ?? null,
       changed_dt: entity.changed_dt ? entity.changed_dt.toISOString() : null,
+    };
+  }
+
+  private mapProductVariantToResponse(entity: any) {
+    return {
+      id: entity.id,
+      product_name: entity.product_name,
+      size: entity.size,
+      color: entity.color,
+      barcode: entity.barcode,
+      sku: entity.sku,
+      price: entity.price.toFixed(2),
+      cost_price: entity.cost_price.toFixed(2),
     };
   }
 
@@ -44,7 +59,15 @@ export class ArticleService {
     if (!entity) {
       throw new NotFoundException(tNotFound('Article', lang));
     }
-    return this.mapToResponse(entity);
+    
+    // Get product variants for this article
+    const productVariants = await this.findProductVariantsByArticleIdUseCase.execute(id);
+    const mappedVariants = productVariants.map((variant) => this.mapProductVariantToResponse(variant));
+    
+    return {
+      ...this.mapToResponse(entity),
+      product_variants: mappedVariants,
+    };
   }
 
   async create(dto: CreateArticleDto, lang?: string) {
