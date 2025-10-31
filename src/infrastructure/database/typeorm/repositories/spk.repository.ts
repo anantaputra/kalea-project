@@ -64,6 +64,9 @@ export class SpkRepository implements SpkRepositoryInterface {
       spkHeader.created_by = payload.created_by || 'system';
       const savedHeader = await mgr.getRepository(SpkEntity).save(spkHeader);
 
+      // Akumulasi penggunaan material dari BOM untuk pengurangan stok
+      const materialUsage = new Map<string, number>();
+
       for (const d of payload.details) {
         const detail = new SpkDetailEntity();
         detail.spk = savedHeader;
@@ -96,7 +99,31 @@ export class SpkRepository implements SpkRepositoryInterface {
           bom.waste_pct = Number(bi.waste_pct) || 0;
           bom.created_by = payload.created_by || 'system';
           await mgr.getRepository(SpkBomEntity).save(bom);
+
+          // Akumulasi penggunaan untuk pengurangan stok material nanti
+          const useQty = Number(bom.qty_required);
+          const key = bi.material.id;
+          materialUsage.set(key, Number((materialUsage.get(key) ?? 0) + useQty));
         }
+      }
+
+      // Update stok material berdasarkan akumulasi BOM
+      for (const [materialId, usedQty] of materialUsage.entries()) {
+        const matRepo = mgr.getRepository(MaterialEntity);
+        const materialRow = await matRepo.findOne({ where: { id: materialId } });
+        if (!materialRow) {
+          throw new Error(`Material not found: ${materialId}`);
+        }
+        const before = Number(materialRow.stock_qty ?? 0);
+        const afterRaw = before - Number(usedQty);
+        const after = Number(afterRaw.toFixed(2));
+        if (after < 0) {
+          throw new Error(`Stok material '${materialRow.material_name}' tidak mencukupi. Sisa: ${before}, butuh: ${usedQty}`);
+        }
+        materialRow.stock_qty = after;
+        materialRow.changed_by = payload.created_by || 'system';
+        materialRow.changed_dt = new Date();
+        await matRepo.save(materialRow);
       }
 
       return this.mapToDomain(savedHeader);
@@ -123,6 +150,9 @@ export class SpkRepository implements SpkRepositoryInterface {
       spkHeader.changed_dt = new Date();
       const savedHeader = await mgr.getRepository(SpkEntity).save(spkHeader);
 
+      // Delta penggunaan material dari BOM untuk penyesuaian stok
+      const materialDelta = new Map<string, number>(); // new - old
+
       // Upsert detail berdasarkan kombinasi spk_id + product_variant_id, dan refresh BOM
       const existingDetails = await mgr.getRepository(SpkDetailEntity).find({
         where: { spk: { id: payload.id } },
@@ -147,6 +177,17 @@ export class SpkRepository implements SpkRepositoryInterface {
           existing.changed_dt = new Date();
           const savedDetail = await mgr.getRepository(SpkDetailEntity).save(existing);
 
+          // Kumpulkan BOM lama (sebelum delete) untuk delta stok
+          const oldBoms = await mgr.getRepository(SpkBomEntity).find({
+            where: { spk_detail: { id: savedDetail.id } },
+            relations: ['material'],
+          });
+          const oldUsageByMaterial = new Map<string, number>();
+          for (const ob of oldBoms) {
+            const key = ob.material.id;
+            oldUsageByMaterial.set(key, Number((oldUsageByMaterial.get(key) ?? 0) + Number(ob.qty_required)));
+          }
+
           // Refresh BOM: hapus BOM lama untuk detail ini dan buat ulang dari master BOM
           await mgr.getRepository(SpkBomEntity).delete({ spk_detail: { id: savedDetail.id } });
 
@@ -154,6 +195,7 @@ export class SpkRepository implements SpkRepositoryInterface {
             where: { product_variant: { id: variantId } },
             relations: ['material'],
           });
+          const newUsageByMaterial = new Map<string, number>();
           for (const bi of bomItems) {
             const bom = new SpkBomEntity();
             bom.spk_detail = savedDetail;
@@ -166,6 +208,17 @@ export class SpkRepository implements SpkRepositoryInterface {
             bom.waste_pct = Number(bi.waste_pct) || 0;
             bom.created_by = payload.changed_by || 'system';
             await mgr.getRepository(SpkBomEntity).save(bom);
+
+            const key = bi.material.id;
+            newUsageByMaterial.set(key, Number((newUsageByMaterial.get(key) ?? 0) + Number(bom.qty_required)));
+          }
+
+          // Hitung delta (new - old) per material untuk detail ini
+          const materialIds = new Set<string>([...oldUsageByMaterial.keys(), ...newUsageByMaterial.keys()]);
+          for (const mid of materialIds) {
+            const oldQty = Number(oldUsageByMaterial.get(mid) ?? 0);
+            const newQty = Number(newUsageByMaterial.get(mid) ?? 0);
+            materialDelta.set(mid, Number((materialDelta.get(mid) ?? 0) + (newQty - oldQty)));
           }
         } else {
           // Insert detail baru: validasi product_variant_id harus ada di master
@@ -187,6 +240,7 @@ export class SpkRepository implements SpkRepositoryInterface {
             where: { product_variant: { id: variantId } },
             relations: ['material'],
           });
+          const newUsageByMaterial = new Map<string, number>();
           for (const bi of bomItems) {
             const bom = new SpkBomEntity();
             bom.spk_detail = savedDetail;
@@ -199,8 +253,35 @@ export class SpkRepository implements SpkRepositoryInterface {
             bom.waste_pct = Number(bi.waste_pct) || 0;
             bom.created_by = payload.changed_by || 'system';
             await mgr.getRepository(SpkBomEntity).save(bom);
+
+            const key = bi.material.id;
+            newUsageByMaterial.set(key, Number((newUsageByMaterial.get(key) ?? 0) + Number(bom.qty_required)));
+          }
+
+          // Untuk detail baru, oldQty = 0, delta = newQty
+          for (const [mid, newQty] of newUsageByMaterial.entries()) {
+            materialDelta.set(mid, Number((materialDelta.get(mid) ?? 0) + Number(newQty)));
           }
         }
+      }
+
+      // Terapkan delta ke stok material: stock = stock - (new - old)
+      for (const [materialId, deltaQty] of materialDelta.entries()) {
+        const matRepo = mgr.getRepository(MaterialEntity);
+        const materialRow = await matRepo.findOne({ where: { id: materialId } });
+        if (!materialRow) {
+          throw new Error(`Material not found: ${materialId}`);
+        }
+        const before = Number(materialRow.stock_qty ?? 0);
+        const afterRaw = before - Number(deltaQty);
+        const after = Number(afterRaw.toFixed(2));
+        if (after < 0) {
+          throw new Error(`Stok material '${materialRow.material_name}' tidak mencukupi. Sisa: ${before}, perubahan kebutuhan: ${deltaQty}`);
+        }
+        materialRow.stock_qty = after;
+        materialRow.changed_by = payload.changed_by || 'system';
+        materialRow.changed_dt = new Date();
+        await matRepo.save(materialRow);
       }
 
       return this.mapToDomain(savedHeader);
