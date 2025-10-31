@@ -10,10 +10,15 @@ import { ArticleEntity } from '../../infrastructure/database/typeorm/entities/Ar
 import { ARTICLE_REPOSITORY, ArticleRepository } from '../../core/domain/repositories/article.repository.interface';
 import { ArticleRepository as ArticleRepositoryClass } from '../../infrastructure/database/typeorm/repositories/article.repository';
 import { FindArticleByIdUseCase } from '../../core/use-cases/article';
+import { BomItemModule } from '../bom-item/bom-item.module';
+import { SYSTEM_MASTER_REPOSITORY, SystemMasterRepository } from '../../core/domain/repositories/system-master.repository.interface';
+import { SystemMasterRepository as SystemMasterRepositoryClass } from '../../infrastructure/database/typeorm/repositories/system-master.repository';
+import { SystemMasterEntity } from '../../infrastructure/database/typeorm/entities/SystemMaster.entity';
+import { FindSystemMasterByTypeCdUseCase } from '../../core/use-cases/system-master';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProductVariantEntity, ArticleEntity])],
+  imports: [TypeOrmModule.forFeature([ProductVariantEntity, ArticleEntity, SystemMasterEntity]), BomItemModule],
   controllers: [ProductVariantController],
   providers: [
     ProductVariantService,
@@ -54,6 +59,13 @@ import { FindArticleByIdUseCase } from '../../core/use-cases/article';
       provide: FindArticleByIdUseCase,
       useFactory: (repo: ArticleRepository) => new FindArticleByIdUseCase(repo),
       inject: [ARTICLE_REPOSITORY],
+    },
+    // System Master wiring for resolving material_category & unit_of_measure values
+    { provide: SYSTEM_MASTER_REPOSITORY, useClass: SystemMasterRepositoryClass },
+    {
+      provide: FindSystemMasterByTypeCdUseCase,
+      useFactory: (repo: SystemMasterRepository) => new FindSystemMasterByTypeCdUseCase(repo),
+      inject: [SYSTEM_MASTER_REPOSITORY],
     },
   ],
 })

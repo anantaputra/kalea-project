@@ -49,5 +49,6 @@ import { BomItemEntity } from '../../infrastructure/database/typeorm/entities/Bo
       inject: [BOM_ITEM_REPOSITORY],
     },
   ],
+  exports: [BomItemService],
 })
 export class BomItemModule {}
