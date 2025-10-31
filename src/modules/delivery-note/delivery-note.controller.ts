@@ -17,10 +17,12 @@ import {
   ApiBody,
   ApiParam,
   ApiHeader,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { FindBaseDto } from 'src/core/find-base.dto';
 import { tCreated, tDeleted, tRetrieved, tUpdated } from 'src/core/common/i18n/messages';
 import { ok, created, updated } from 'src/infrastructure/http/response';
+import { DeliveryNoteTypes } from 'src/core/domain/value-objects/delivery-note-type.vo';
 import { DeliveryNoteService } from './delivery-note.service';
 import { CreateDeliveryNoteDto } from './dto/create-delivery-note.dto';
 import { UpdateDeliveryNoteDto } from './dto/update-delivery-note.dto';
@@ -61,7 +63,7 @@ export class DeliveryNoteController {
     @Headers() headers: Record<string, string>,
   ) {
     const lang = headers['accept-language'];
-    const data = await this.service.findTypes(lang);
+    const data = DeliveryNoteTypes.map((d) => ({ id: d.type.toLocaleUpperCase(), name: d.type.toLocaleUpperCase() }));
     return ok(data, tRetrieved('Surat Jalan', lang));
   }
 
@@ -230,6 +232,7 @@ export class DeliveryNoteController {
   }
 
   @ApiOperation({ summary: 'Generate nomor Surat Jalan otomatis' })
+  @ApiQuery({ name: 'type', required: true, example: 'Surat jalan buang benang keluar' })
   @ApiOkResponse({
     description: 'Response dibungkus oleh TransformResponseInterceptor',
     schema: {
@@ -245,8 +248,8 @@ export class DeliveryNoteController {
     },
   })
   @Get('generate-no')
-  async generateNo() {
-    const dnNo = await this.service.generateDeliveryNoteNo();
+  async generateNo(@Query('type') type: string) {
+    const dnNo = await this.service.generateDeliveryNoteNo(type);
     return { delivery_note_no: dnNo };
   }
 

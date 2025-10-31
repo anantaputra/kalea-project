@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import {
   CreateDeliveryNoteUseCase,
   UpdateDeliveryNoteUseCase,
@@ -15,6 +15,7 @@ import type { CreateDeliveryNoteDto } from './dto/create-delivery-note.dto';
 import type { UpdateDeliveryNoteDto } from './dto/update-delivery-note.dto';
 import { tNotFound } from 'src/core/common/i18n/messages';
 import { SystemMasterService } from '../system-master/system-master.service';
+import { DeliveryNoteTypes } from 'src/core/domain/value-objects/delivery-note-type.vo';
 
 @Injectable()
 export class DeliveryNoteService {
@@ -119,7 +120,12 @@ export class DeliveryNoteService {
     return full ?? { id: updated.id, delivery_note_no: updated.delivery_note_no };
   }
 
-  async generateDeliveryNoteNo(): Promise<string> {
+  async generateDeliveryNoteNo(type: string): Promise<string> {
+    if (!type) {
+      throw new BadRequestException('Parameter "type" is required');
+    }
+    const typeDef = DeliveryNoteTypes.find((d) => d.type.toLocaleUpperCase() === type.toLocaleUpperCase());
+    const code = typeDef?.code ?? type.toLocaleUpperCase();
     const now = new Date();
     const month = now.getMonth() + 1; // 1-12
     const year = now.getFullYear();
@@ -145,11 +151,13 @@ export class DeliveryNoteService {
       .filter((no) => !!no)
       .filter((no) => {
         const parts = no.split('/');
+        // Expected format: seq/SJ/{code}/{monthRoman}/{year}
         return (
-          parts.length === 4 &&
+          parts.length === 5 &&
           parts[1] === 'SJ' &&
-          parts[2] === monthRoman &&
-          parts[3] === String(year)
+          parts[2] === code &&
+          parts[3] === monthRoman &&
+          parts[4] === String(year)
         );
       });
 
@@ -161,7 +169,7 @@ export class DeliveryNoteService {
 
     const nextSeq = lastSeq + 1;
     const nextSeqStr = String(nextSeq).padStart(3, '0');
-    return `${nextSeqStr}/SJ/${monthRoman}/${year}`;
+    return `${nextSeqStr}/SJ/${code}/${monthRoman}/${year}`;
   }
 
   async approval(dto: ApprovalDeliveryNoteDto, _lang?: string) {
