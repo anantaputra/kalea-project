@@ -6,6 +6,7 @@ export class Materials {
     public barcode?: string,
     public material_category?: string,
     public unit_of_measure?: string,
+    public stock_qty?: number,
     public is_active: boolean = true,
     public created_by?: string,
     public created_dt?: Date,

@@ -59,6 +59,7 @@ export class MaterialsRepository implements MaterialsRepositoryInterface {
       row.barcode,
       row.material_category,
       row.unit_of_measure,
+      row.stock_qty,
       row.is_active,
       row.created_by,
       row.created_dt,

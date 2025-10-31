@@ -47,6 +47,15 @@ export class MaterialEntity {
   unit_of_measure: string;
 
   @Column({
+    name: 'stock_qty',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0
+  })
+  stock_qty: number;
+
+  @Column({
     name: 'is_active',
     type: 'boolean',
     default: true,

@@ -23,6 +23,7 @@ import { VendorModule } from './modules/vendor/vendor.module';
 import { DeliveryNoteModule } from './modules/delivery-note/delivery-note.module';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MaterialStockModule } from './modules/material-stock/material-stock.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -44,6 +45,7 @@ import { AuthModule } from './modules/auth/auth.module';
     UnitOfMeasureModule,
     MaterialCategoryModule,
     MaterialsModule,
+    MaterialStockModule,
     ArticleModule,
     ProductVariantModule,
     BomItemModule,
