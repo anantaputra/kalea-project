@@ -11,6 +11,9 @@ import type { CreateBomItemDto } from './dto/create-bom-item.dto';
 import type { UpdateBomItemDto } from './dto/update-bom-item.dto';
 import type { CreateBomItemBulkDto } from './dto/create-bom-item-bulk.dto';
 import type { UpdateBomItemBulkDto } from './dto/update-bom-item-bulk.dto';
+import { FindSystemMasterByTypeCdUseCase } from '../../core/use-cases/system-master';
+import { UnitOfMeasureType } from 'src/core/domain/value-objects/unit-of-measure-id.vo';
+import { MaterialCategoryType } from 'src/core/domain/value-objects/material-category-id.vo';
 
 @Injectable()
 export class BomItemService {
@@ -21,13 +24,45 @@ export class BomItemService {
     private readonly findByIdUseCase: FindBomItemByIdUseCase,
     private readonly deleteUseCase: DeleteBomItemUseCase,
     private readonly findByProductVariantIdUseCase: FindBomItemsByProductVariantIdUseCase,
+    private readonly findByTypeCdUseCase: FindSystemMasterByTypeCdUseCase,
   ) {}
 
   async findAllPaginated(start: number, length: number, lang?: string) {
     const items = await this.findAllUseCase.execute();
     const total = items.length;
     const paged = items.slice(start, start + length);
-    return { items: paged.map((e) => this.mapToResponse(e)), total };
+    const mapped = await Promise.all(
+      paged.map(async (e) => {
+        const base = this.mapToResponse(e);
+        // Resolve labels if material is loaded
+        if (e.material) {
+          const catLabel = e.material.material_category
+            ? (
+                await this.findByTypeCdUseCase.execute(
+                  MaterialCategoryType.MATERIAL_CATEGORY,
+                  e.material.material_category,
+                  lang,
+                )
+              )?.system_value ?? e.material.material_category
+            : base.material && (base.material as any).material_category;
+          const uomLabel = e.material.unit_of_measure
+            ? (
+                await this.findByTypeCdUseCase.execute(
+                  UnitOfMeasureType.UNIT_OF_MEASURE,
+                  e.material.unit_of_measure,
+                  lang,
+                )
+              )?.system_value ?? e.material.unit_of_measure
+            : base.material && (base.material as any).unit_of_measure;
+          if (base.material && 'material_code' in (base.material as any)) {
+            (base.material as any).material_category = catLabel ?? (base.material as any).material_category;
+            (base.material as any).unit_of_measure = uomLabel ?? (base.material as any).unit_of_measure;
+          }
+        }
+        return base;
+      }),
+    );
+    return { items: mapped, total };
   }
 
   async findOne(id: string, lang?: string) {
@@ -35,7 +70,30 @@ export class BomItemService {
     if (!existing) {
       throw new NotFoundException(tNotFound('BOM Item', lang));
     }
-    return this.mapToResponse(existing);
+    const base = this.mapToResponse(existing);
+    if (existing.material && base.material && 'material_code' in (base.material as any)) {
+      const catLabel = existing.material.material_category
+        ? (
+            await this.findByTypeCdUseCase.execute(
+              MaterialCategoryType.MATERIAL_CATEGORY,
+              existing.material.material_category,
+              lang,
+            )
+          )?.system_value ?? existing.material.material_category
+        : (base.material as any).material_category;
+      const uomLabel = existing.material.unit_of_measure
+        ? (
+            await this.findByTypeCdUseCase.execute(
+              UnitOfMeasureType.UNIT_OF_MEASURE,
+              existing.material.unit_of_measure,
+              lang,
+            )
+          )?.system_value ?? existing.material.unit_of_measure
+        : (base.material as any).unit_of_measure;
+      (base.material as any).material_category = catLabel;
+      (base.material as any).unit_of_measure = uomLabel;
+    }
+    return base;
   }
 
   async create(dto: CreateBomItemDto, lang?: string) {
