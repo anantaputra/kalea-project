@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../entities/User.entity';
@@ -34,13 +34,60 @@ export class UserRepository implements UserRepositoryInterface {
 
   async create(entity: User): Promise<User> {
     const row = this.mapToOrm(entity);
-    const saved = await this.ormRepo.save(row);
-    return this.mapToDomain(saved);
+    try {
+      const saved = await this.ormRepo.save(row);
+      return this.mapToDomain(saved);
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        const detail: string = err?.detail || '';
+        // Postgres unique violation: identify field
+        const isUsername = detail.includes('(username)');
+        const isEmail = detail.includes('(email)');
+        const message = isUsername
+          ? `Username "${entity.username}" sudah digunakan`
+          : isEmail
+          ? `Email "${entity.email}" sudah digunakan`
+          : 'Data yang Anda masukkan sudah terdaftar';
+        throw new BadRequestException({
+          message,
+          errors: {
+            code: 'DUPLICATE',
+            field: isUsername ? 'username' : isEmail ? 'email' : undefined,
+            value: isUsername ? entity.username : isEmail ? entity.email : undefined,
+            constraint: err?.constraint,
+          },
+        });
+      }
+      throw err;
+    }
   }
 
   async update(entity: User): Promise<User> {
-    const saved = await this.ormRepo.save(this.mapToOrm(entity));
-    return this.mapToDomain(saved);
+    try {
+      const saved = await this.ormRepo.save(this.mapToOrm(entity));
+      return this.mapToDomain(saved);
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        const detail: string = err?.detail || '';
+        const isUsername = detail.includes('(username)');
+        const isEmail = detail.includes('(email)');
+        const message = isUsername
+          ? `Username "${entity.username}" sudah digunakan`
+          : isEmail
+          ? `Email "${entity.email}" sudah digunakan`
+          : 'Data yang Anda masukkan sudah terdaftar';
+        throw new BadRequestException({
+          message,
+          errors: {
+            code: 'DUPLICATE',
+            field: isUsername ? 'username' : isEmail ? 'email' : undefined,
+            value: isUsername ? entity.username : isEmail ? entity.email : undefined,
+            constraint: err?.constraint,
+          },
+        });
+      }
+      throw err;
+    }
   }
 
   async delete(id: string): Promise<void> {

@@ -181,6 +181,14 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
         detail.created_by = payload.user_id || 'system';
 
         await mgr.getRepository(DeliveryNoteDetailEntity).save(detail);
+
+        // Jika item_type MATERIAL, kurangi stok material sejumlah qty_out
+        if (d.item_type === 'MATERIAL' && itemId) {
+          const qtyOut = Number(d.qty_out) || 0;
+          if (qtyOut > 0) {
+            await mgr.getRepository(MaterialEntity).decrement({ id: itemId }, 'stock_qty', qtyOut);
+          }
+        }
       }
 
       return saved;
@@ -260,6 +268,14 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
           detail.status = payload.status || header.status;
           detail.created_by = payload.changed_by || 'system';
           await detailsRepo.save(detail);
+
+          // Jika item_type MATERIAL, kurangi stok material sejumlah qty_out
+          if (d.item_type === 'MATERIAL' && detail.item_id) {
+            const qtyOut = Number(d.qty_out) || 0;
+            if (qtyOut > 0) {
+              await mgr.getRepository(MaterialEntity).decrement({ id: detail.item_id }, 'stock_qty', qtyOut);
+            }
+          }
         }
       }
 
