@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import type {
   DeliveryNoteRepository as DeliveryNoteRepositoryInterface,
   DeliveryNoteFullByIdResult,
@@ -10,6 +10,7 @@ import { DeliveryNoteDetailEntity } from '../entities/DeliveryNoteDetail.entity'
 import { VendorEntity } from '../entities/Vendor.entity';
 import { SpkDetailEntity } from '../entities/SpkDetail.entity';
 import { SpkEntity } from '../entities/Spk.entity';
+import { MaterialEntity } from '../entities/Material.entity';
 import type { CreateDeliveryNoteFullPayload } from '../../../../core/domain/repositories/delivery-note.repository.interface';
 import type { UpdateDeliveryNoteFullPayload } from '../../../../core/domain/repositories/delivery-note.repository.interface';
 import { DeliveryNoteEntity } from '../entities/DeliveryNote.entity';
@@ -148,16 +149,22 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       for (const d of payload.details || []) {
         const detail = new DeliveryNoteDetailEntity();
         detail.delivery_note = saved;
-        // Attach spk and spk_detail using provided spk_detail_id
-        const spkDetail = await mgr.getRepository(SpkDetailEntity).findOne({
-          where: { id: d.spk_detail_id },
-          relations: ['spk'],
-        });
-        if (!spkDetail) {
-          throw new Error(`SPK Detail not found: ${d.spk_detail_id}`);
+        // Attach spk/spk_detail hanya jika spk_detail_id tersedia
+        if (d.spk_detail_id) {
+          const spkDetail = await mgr.getRepository(SpkDetailEntity).findOne({
+            where: { id: d.spk_detail_id },
+            relations: ['spk'],
+          });
+          if (!spkDetail) {
+            throw new Error(`SPK Detail not found: ${d.spk_detail_id}`);
+          }
+          detail.spk_detail = spkDetail;
+          detail.spk = spkDetail.spk as SpkEntity;
+        } else {
+          // Pastikan spk dan spk_detail null ketika spk_detail_id null
+          detail.spk_detail = null;
+          detail.spk = null;
         }
-        detail.spk_detail = spkDetail;
-        detail.spk = spkDetail.spk as SpkEntity;
 
         detail.item_type = d.item_type;
         // Choose item_id based on item_type
@@ -204,7 +211,7 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       header.changed_dt = new Date();
       const saved = await headerRepo.save(header);
 
-      // Upsert details by spk_detail_id
+      // Upsert details: jika spk_detail_id tersedia gunakan sebagai key; jika tidak, selalu create baris baru
       const detailsRepo = mgr.getRepository(DeliveryNoteDetailEntity);
       const existingDetails = await detailsRepo.find({
         where: { delivery_note: { id: payload.id } },
@@ -217,8 +224,8 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       }
 
       for (const d of payload.details || []) {
-        const sdid = d.spk_detail_id;
-        const existing = detailBySpkDetailId.get(sdid);
+        const sdid = d.spk_detail_id || '';
+        const existing = sdid ? detailBySpkDetailId.get(sdid) : undefined;
         if (existing) {
           // Update existing row
           existing.item_type = d.item_type;
@@ -233,12 +240,18 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
           await detailsRepo.save(existing);
         } else {
           // Create new row (attach spk_detail and spk)
-          const spkDetail = await mgr.getRepository(SpkDetailEntity).findOne({ where: { id: sdid }, relations: ['spk'] });
-          if (!spkDetail) throw new Error(`SPK Detail not found: ${sdid}`);
           const detail = new DeliveryNoteDetailEntity();
           detail.delivery_note = saved;
-          detail.spk_detail = spkDetail;
-          detail.spk = spkDetail.spk as SpkEntity;
+          if (sdid) {
+            const spkDetail = await mgr.getRepository(SpkDetailEntity).findOne({ where: { id: sdid }, relations: ['spk'] });
+            if (!spkDetail) throw new Error(`SPK Detail not found: ${sdid}`);
+            detail.spk_detail = spkDetail;
+            detail.spk = spkDetail.spk as SpkEntity;
+          } else {
+            // Pastikan spk dan spk_detail null ketika spk_detail_id null
+            detail.spk_detail = null;
+            detail.spk = null;
+          }
           detail.item_type = d.item_type;
           detail.item_id = d.item_type === 'PRODUCT' ? d.product_variant_id || '' : d.material_id || '';
           detail.qty_out = Number(d.qty_out) || 0;
@@ -271,23 +284,50 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       .where('d.delivery_note_id = :id', { id })
       .getMany();
 
+    // Preload material names for MATERIAL item_type to avoid N+1 queries
+    const materialIds = Array.from(
+      new Set(
+        (rows || [])
+          .filter((r) => (r.item_type || '').toUpperCase() === 'MATERIAL')
+          .map((r) => r.item_id)
+          .filter((x) => !!x),
+      ),
+    );
+    const matRepo = this.ormRepo.manager.getRepository(MaterialEntity);
+    const mats = materialIds.length ? await matRepo.find({ where: { id: In(materialIds) } }) : [];
+    const matMap = new Map<string | number, string>();
+    for (const m of mats) {
+      matMap.set(m.id, m.material_name);
+    }
+
     const toUiItemType = (t: string) => {
       if (!t) return '';
       const x = t.toUpperCase();
       return x === 'PRODUCT' ? 'barang' : x === 'MATERIAL' ? 'bahan' : t;
     };
 
-    const details = rows.map((d) => ({
-      id: d.id,
-      spk_id: (d.spk as SpkEntity)?.id ?? '',
-      spk_detail_id: (d.spk_detail as SpkDetailEntity)?.id ?? '',
-      item_type: toUiItemType(d.item_type),
-      item_id: d.item_id,
-      qty_out: Number(d.qty_out) || 0,
-      qty_in: Number(d.qty_in) || 0,
-      labor_cost: Number(d.labor_cost) || 0,
-      status: d.status,
-    }));
+    const details = rows.map((d) => {
+      const isProduct = (d.item_type || '').toUpperCase() === 'PRODUCT';
+      const isMaterial = (d.item_type || '').toUpperCase() === 'MATERIAL';
+      const pv = (d.spk_detail as SpkDetailEntity | undefined)?.product_variant as any;
+      const item_name = isProduct
+        ? (pv?.product_name ?? '')
+        : isMaterial
+        ? (matMap.get(d.item_id) ?? '')
+        : '';
+      return {
+        id: d.id,
+        spk_id: (d.spk_detail as SpkDetailEntity)?.id ? (d.spk as SpkEntity)?.id ?? '' : '',
+        spk_detail_id: (d.spk_detail as SpkDetailEntity)?.id ?? '',
+        item_type: toUiItemType(d.item_type),
+        item_id: d.item_id,
+        item_name,
+        qty_out: Number(d.qty_out) || 0,
+        qty_in: Number(d.qty_in) || 0,
+        labor_cost: Number(d.labor_cost) || 0,
+        status: d.status,
+      };
+    });
 
     const vendor = header.vendor
       ? {

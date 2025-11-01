@@ -13,11 +13,13 @@ import { Type } from 'class-transformer';
 
 class DeliveryNoteDetailDto {
   @IsUUID()
-  @IsNotEmpty()
-  spk_detail_id!: string;
+  @IsOptional()
+  // Jika diisi, harus UUID; jika null/undefined, dilewati
+  spk_detail_id?: string | null;
 
   @IsString()
-  item_type!: string; // 'PRODUCT' | 'MATERIAL'
+  @IsIn(['PRODUCT', 'MATERIAL'])
+  item_type!: string; // hanya 'PRODUCT' atau 'MATERIAL'
 
   @IsUUID()
   @IsOptional()

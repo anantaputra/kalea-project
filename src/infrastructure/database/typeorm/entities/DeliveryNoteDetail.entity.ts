@@ -22,19 +22,19 @@ export class DeliveryNoteDetailEntity {
   })
   delivery_note: DeliveryNoteEntity;
 
-  @ManyToOne(() => SpkEntity, { onDelete: 'CASCADE' })
+  @ManyToOne(() => SpkEntity, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({
     name: 'spk_id',
     referencedColumnName: 'id',
   })
-  spk: SpkEntity;
+  spk: SpkEntity | null;
 
-  @ManyToOne(() => SpkDetailEntity, { onDelete: 'CASCADE' })
+  @ManyToOne(() => SpkDetailEntity, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({
     name: 'spk_detail_id',
     referencedColumnName: 'id',
   })
-  spk_detail: SpkDetailEntity;
+  spk_detail: SpkDetailEntity | null;
 
   @Column({
     name: 'item_type',

@@ -10,7 +10,7 @@ export type CreateDeliveryNoteFullPayload = {
   notes?: string | null;
   user_id: string; // used as created_by
   details: Array<{
-    spk_detail_id: string;
+    spk_detail_id?: string | null;
     item_type: string; // e.g., 'PRODUCT' | 'MATERIAL'
     product_variant_id?: string | null;
     material_id?: string | null;
@@ -31,7 +31,7 @@ export type UpdateDeliveryNoteFullPayload = {
   notes?: string | null;
   changed_by?: string;
   details: Array<{
-    spk_detail_id: string;
+    spk_detail_id?: string | null;
     item_type: string; // 'PRODUCT' | 'MATERIAL'
     product_variant_id?: string | null;
     material_id?: string | null;

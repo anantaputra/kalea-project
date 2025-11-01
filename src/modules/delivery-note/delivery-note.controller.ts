@@ -343,8 +343,8 @@ export class DeliveryNoteController {
   @ApiBody({
     type: CreateDeliveryNoteDto,
     examples: {
-      default: {
-        summary: 'Contoh body',
+      Product: {
+        summary: 'Contoh body Product',
         value: {
           delivery_note_no: '001/SJ/X/2024',
           delivery_note_date: '2024-10-01',
@@ -360,6 +360,30 @@ export class DeliveryNoteController {
               item_type: 'PRODUCT',
               product_variant_id: '7ed80dcd-1a7f-444f-b95f-8dcb6a831598',
               material_id: null,
+              qty_out: 50,
+              qty_in: 0,
+              labor_cost: 0,
+            }
+          ]
+        },
+      },
+      Material: {
+        summary: 'Contoh body Material',
+        value: {
+          delivery_note_no: '001/SJ/X/2024',
+          delivery_note_date: '2024-10-01',
+          delivery_note_type: 'OUTBOUND',
+          vendor_id: 'e3778e83-8343-4c81-833b-5ea06ae1c277',
+          destination: 'Gudang Utama',
+          status: 'PENDING',
+          notes: 'Catatan pengiriman',
+          user_id: 'system',
+          details: [
+            {
+              spk_detail_id: null,
+              item_type: 'MATERIAL',
+              product_variant_id: null,
+              material_id: 'bfc3721d-bb94-4b21-8a69-f225d63c2cd5',
               qty_out: 50,
               qty_in: 0,
               labor_cost: 0,
