@@ -21,6 +21,7 @@ import { FindSystemMasterByTypeCdUseCase } from 'src/core/use-cases/system-maste
 import { UnitOfMeasureType } from 'src/core/domain/value-objects/unit-of-measure-id.vo';
 import { DeliveryNoteDetailEntity } from 'src/infrastructure/database/typeorm/entities/DeliveryNoteDetail.entity';
 import { DeliveryNoteEntity } from 'src/infrastructure/database/typeorm/entities/DeliveryNote.entity';
+import { SpkDetailEntity } from 'src/infrastructure/database/typeorm/entities/SpkDetail.entity';
 
 @Injectable()
 export class SpkService {
@@ -36,6 +37,8 @@ export class SpkService {
     private readonly findSystemMasterByTypeCdUseCase: FindSystemMasterByTypeCdUseCase,
     @InjectRepository(DeliveryNoteDetailEntity)
     private readonly dnDetailRepo: Repository<DeliveryNoteDetailEntity>,
+    @InjectRepository(SpkDetailEntity)
+    private readonly detailRepo: Repository<SpkDetailEntity>,
   ) {}
 
   private mapHeaderToResponse(entity: Spk) {
@@ -66,7 +69,20 @@ export class SpkService {
 
   async findAllPaginated(start = 0, length = 10, _lang?: string) {
     const all = await this.findAllUseCase.execute();
-    const mapped = all.map((h) => this.mapHeaderToResponse(h));
+    const mapped = await Promise.all(
+      all.map(async (h) => {
+        const base = this.mapHeaderToResponse(h);
+        // Hitung progress header sebagai rata-rata dari progress di details
+        const details = await this.detailRepo.find({ where: { spk: { id: h.id } } });
+        const percentages: number[] = details.map((d) => {
+          const order = Number(d.qty_order) || 0;
+          const completed = (Number(d.qty_done) || 0) + (Number(d.qty_reject) || 0);
+          return order > 0 ? Math.round((completed / order) * 100) : 0;
+        });
+        const avgPct = percentages.length > 0 ? Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length) : 0;
+        return { ...base, progress: `${avgPct}%` };
+      })
+    );
     const total = mapped.length;
     const items = mapped.slice(start, start + length);
     return { items, total };

@@ -195,6 +195,7 @@ export class SpkStageService {
     });
 
     const approved = dto.status === 'APPROVED';
+    stage.status = dto.status;
     stage.is_approved = approved;
     stage.status_approval = dto.status;
     stage.changed_by = dto.user_id || 'system';
@@ -218,6 +219,12 @@ export class SpkStageService {
           const allStages = await this.stageRepo.find({ where: { spk_detail: { id: saved.spk_detail.id } } });
           const totalReject = allStages.reduce((acc, s) => acc + Number(s.qty_reject ?? 0), 0);
           detail.qty_reject = Number(totalReject);
+          // Jika qty_in last stage + totalReject sama dengan qty_order, tandai DONE
+          const qtyOrder = Number(detail.qty_order ?? 0);
+          const sumCompleted = Number(lastStage.qty_in ?? 0) + Number(totalReject);
+          if (sumCompleted === qtyOrder) {
+            detail.status = 'DONE';
+          }
           detail.changed_by = dto.user_id || 'system';
           detail.changed_dt = new Date();
           await this.detailRepo.save(detail);

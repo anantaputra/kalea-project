@@ -347,7 +347,7 @@ export class SpkRepository implements SpkRepositoryInterface {
         qty_reject: Number(d.qty_reject),
         progress: (() => {
           const order = Number(d.qty_order) || 0;
-          const done = Number(d.qty_done) || 0;
+          const done = (Number(d.qty_done) || 0) + (Number(d.qty_reject) || 0);
           const pct = order > 0 ? Math.round((done / order) * 100) : 0;
           return `${pct}%`;
         })(),
