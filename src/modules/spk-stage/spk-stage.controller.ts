@@ -76,6 +76,73 @@ export class SpkStageController {
     return ok(data, tRetrieved('Spk', lang));
   }
 
+  @ApiOperation({ summary: 'Ambil Stage yg waiting approval' })
+  @ApiHeader({
+    name: 'accept-language',
+    description: 'Locale untuk pesan respons (default id)',
+    required: false,
+    schema: { type: 'string', default: 'id' },
+  })
+  @ApiOkResponse({
+    description: 'Response dibungkus oleh TransformResponseInterceptor',
+    schema: {
+      example: {
+        success: true,
+        data: [
+          {
+            id: '49d723d7-59cf-4be8-aef1-4685ec69cde5',
+            stage_name: 'SEWING 2',
+            spk: {
+              id: '34a08954-ca4a-46d1-a9d0-d7cc44fe26ca',
+              spk_no: '',
+              buyer: 'PT. Contoh Buyer',
+              spk_date: '2024-10-01T00:00:00.000Z',
+              deadline: '2024-10-15T00:00:00.000Z',
+              status: 'APPROVED',
+              notes: 'Catatan SPK',
+              created_by: 'system',
+              created_dt: '2025-10-30T16:48:25.957Z',
+              changed_by: 'Budi Santoso',
+              changed_dt: '2025-10-31T08:14:06.845Z'
+            },
+            product_variant: {
+              id: 'd354b8ed-ad3d-49f3-a239-4947c4053b5b',
+              product_name: 'Kalea Oversized Hoodie - Coklat - XL',
+              size: 'XL',
+              color: 'Coklat',
+              barcode: '1001001001003',
+              sku: 'KOH-BRN-XL',
+              price: '340000.00',
+              cost_price: '230000.00',
+            },
+            seq: 1,
+            qty_in: 100,
+            qty_reject: 2,
+            pic_id: 'user-123',
+            start_at: '2025-10-26T09:00:00.000Z',
+            end_at: '2025-10-26T17:00:00.000Z',
+            status: 'MENUNGGU_PERSETUJUAN',
+            created_by: 'system',
+            created_dt: '2025-10-29T20:01:13.514Z',
+            changed_by: 'system',
+            changed_dt: '2025-10-29T20:01:13.514Z'
+          },
+        ],
+        message: null,
+        meta: null,
+        timestamp: '2024-10-01T10:00:00.000Z',
+      },
+    },
+  })
+  @Get('waiting-approval')
+  async findStageNotApproved(
+    @Headers() headers: Record<string, string>
+  ) {
+    const lang = headers['accept-language'];
+    const data = await this.service.findStagesByStatusMenungguPersetujuan();
+    return ok(data, tRetrieved('SPK Stage', lang));
+  }
+
   @ApiOperation({ summary: 'Ambil Stage dari Tiap SPK DETAIL yg waiting approval' })
   @ApiHeader({
     name: 'accept-language',
