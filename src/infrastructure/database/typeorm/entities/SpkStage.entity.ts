@@ -82,6 +82,21 @@ export class SpkStageEntity {
   status: string;
 
   @Column({
+    name: 'is_approved',
+    type: 'boolean',
+    nullable: false,
+    default: false,
+  })
+  is_approved: boolean;
+
+  @Column({
+    name: 'status_approval',
+    type: 'varchar',
+    nullable: true,
+  })
+  status_approval: string;
+
+  @Column({
     name: 'created_by',
     type: 'varchar',
     default: 'system',

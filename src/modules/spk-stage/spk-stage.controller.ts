@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse, ApiCreatedResponse, ApiBody, ApiParam, ApiQuery, ApiHeader } from '@nestjs/swagger';
 import { SpkStageService } from './spk-stage.service';
+import { ApprovalSpkDto } from '../spk/dto/approval-spk.dto';
 import { CreateSpkStageDto } from './dto/create-spk-stage.dto';
 import { UpdateSpkStageDto } from './dto/update-spk-stage.dto';
 import { created, ok, updated } from 'src/infrastructure/http/response';
@@ -52,6 +53,7 @@ export class SpkStageController {
             start_at: '2025-10-26T09:00:00.000Z',
             end_at: '2025-10-26T17:00:00.000Z',
             status: 'IN_PROGRESS',
+            status_approved: 'WAITING APPROVAL',
             created_by: 'system',
             created_dt: '2025-10-29T20:01:13.514Z',
             changed_by: 'system',
@@ -71,6 +73,53 @@ export class SpkStageController {
   ) {
     const lang = headers['accept-language'];
     const data = await this.service.findStageSpkDetail(id);
+    return ok(data, tRetrieved('Spk', lang));
+  }
+
+  @ApiOperation({ summary: 'Ambil Stage dari Tiap SPK DETAIL yg waiting approval' })
+  @ApiHeader({
+    name: 'accept-language',
+    description: 'Locale untuk pesan respons (default id)',
+    required: false,
+    schema: { type: 'string', default: 'id' },
+  })
+  @ApiParam({ name: 'spk_detail_id', example: '43fecb8b-23a4-409f-bf8c-aff83d6eb236' })
+  @ApiOkResponse({
+    description: 'Response dibungkus oleh TransformResponseInterceptor',
+    schema: {
+      example: {
+        success: true,
+        data: [
+          {
+            id: '49d723d7-59cf-4be8-aef1-4685ec69cde5',
+            spk_detail_id: '34a08954-ca4a-46d1-a9d0-d7cc44fe26ca',
+            stage_name: 'SEWING 2',
+            seq: 1,
+            qty_in: 100,
+            qty_reject: 2,
+            pic_id: 'user-123',
+            start_at: '2025-10-26T09:00:00.000Z',
+            end_at: '2025-10-26T17:00:00.000Z',
+            status: 'IN_PROGRESS',
+            created_by: 'system',
+            created_dt: '2025-10-29T20:01:13.514Z',
+            changed_by: 'system',
+            changed_dt: '2025-10-29T20:01:13.514Z'
+          },
+        ],
+        message: null,
+        meta: null,
+        timestamp: '2024-10-01T10:00:00.000Z',
+      },
+    },
+  })
+  @Get('spk-detail/waiting-approval/:spk_detail_id')
+  async findStageSpkDetailNotApproved(
+    @Param('spk_detail_id') id: string,
+    @Headers() headers: Record<string, string>
+  ) {
+    const lang = headers['accept-language'];
+    const data = await this.service.findStageSpkDetailNotApproved(id);
     return ok(data, tRetrieved('Spk', lang));
   }
 
@@ -154,4 +203,55 @@ export class SpkStageController {
   // delete(@Param('id') id: string) {
   //   return this.service.delete(id);
   // }
+
+  @ApiOperation({ summary: 'Approval SPK Stage' })
+  @ApiHeader({
+    name: 'accept-language',
+    description: 'Locale untuk pesan respons (default id)',
+    required: false,
+    schema: { type: 'string', default: 'id' },
+  })
+  @ApiBody({
+    type: ApprovalSpkDto,
+    examples: {
+      default: {
+        summary: 'Contoh body',
+        value: {
+          id: '12ac8fcd-6e53-436a-be72-c29752a44310',
+          status: 'APPROVED',
+          user_id: 'system',
+        }
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Response dibungkus oleh TransformResponseInterceptor',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: '12ac8fcd-6e53-436a-be72-c29752a44310',
+          spk_no: '001/SPK/X/2025',
+          buyer: 'PT Supplier Utama',
+          spk_date: '2025-10-23',
+          deadline: '2025-11-15',
+          status: 'APPROVED',
+          notes: 'Catatan SPK',
+          created_by: 'system',
+          created_dt: '2025-10-23T13:15:19.736Z',
+          changed_by: 'system',
+          changed_dt: '2025-10-23T13:15:19.736Z',
+        },
+        message: 'Approved',
+        meta: null,
+        timestamp: '2024-10-01T10:00:00.000Z',
+      },
+    },
+  })
+  @Post('approval')
+  async approval(@Body() dto: ApprovalSpkDto, @Headers() headers: Record<string, string>) {
+    const lang = headers['accept-language'];
+    const data = await this.service.approval(dto, lang);
+    return updated(data, tUpdated('SPK Stage', lang));
+  }
 }

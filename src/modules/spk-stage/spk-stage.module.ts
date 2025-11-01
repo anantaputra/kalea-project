@@ -12,6 +12,9 @@ import { BomItemEntity } from '../../infrastructure/database/typeorm/entities/Bo
 import { SPK_REPOSITORY, SpkRepository } from '../../core/domain/repositories/spk.repository.interface';
 import { SpkRepository as SpkRepositoryClass } from '../../infrastructure/database/typeorm/repositories/spk.repository';
 import { CreateSpkStageUseCase, UpdateSpkStageUseCase } from '../../core/use-cases/spk';
+import { ApprovalTransactionEntity } from '../../infrastructure/database/typeorm/entities/ApprovalTransaction.entity';
+import { APPROVAL_REPOSITORY } from '../../core/domain/repositories/approval.repository.interface';
+import { ApprovalRepository as ApprovalRepositoryClass } from '../../infrastructure/database/typeorm/repositories/approval.repository';
 
 @Module({
   imports: [
@@ -21,6 +24,7 @@ import { CreateSpkStageUseCase, UpdateSpkStageUseCase } from '../../core/use-cas
       SpkBomEntity,
       BomItemEntity,
       SpkStageEntity,
+      ApprovalTransactionEntity,
     ]),
   ],
   controllers: [SpkStageController],
@@ -28,6 +32,7 @@ import { CreateSpkStageUseCase, UpdateSpkStageUseCase } from '../../core/use-cas
     SpkStageService,
     { provide: SPK_STAGE_REPOSITORY, useClass: SpkStageRepository },
     { provide: SPK_REPOSITORY, useClass: SpkRepositoryClass },
+    { provide: APPROVAL_REPOSITORY, useClass: ApprovalRepositoryClass },
     {
       provide: CreateSpkStageUseCase,
       useFactory: (repo: SpkRepository) => new CreateSpkStageUseCase(repo),
