@@ -14,6 +14,14 @@ export class SpkEntity {
   spk_no: string;
 
   @Column({
+    name: 'barcode',
+    type: 'varchar',
+    nullable: true,
+    unique: true,
+  })
+  barcode: string | null;
+
+  @Column({
     name: 'buyer',
     type: 'varchar',
     nullable: false,
@@ -47,6 +55,15 @@ export class SpkEntity {
     nullable: true,
   })
   notes: string | null;
+
+  @Column({
+    name: 'sewing_cost',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  sewing_cost: number | null;
 
   @Column({
     name: 'created_by',

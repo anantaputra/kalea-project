@@ -19,11 +19,26 @@ export class MaterialStockEntity {
   qty: number;
 
   @Column({
+    name: 'price',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+  })
+  price: number;
+
+  @Column({
     name: 'is_approved',
     type: 'boolean',
     default: false,
   })
   is_approved!: boolean;
+
+  @Column({
+    name: 'approved_dt',
+    type: 'timestamp',
+    nullable: true,
+  })
+  approved_dt: Date;
 
   @Column({
     name: 'created_by',

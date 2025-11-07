@@ -42,7 +42,6 @@ export class MaterialsService {
     );
     return {
       id: entity.id,
-      material_code: entity.material_code,
       material_name: entity.material_name,
       barcode: entity.barcode,
       stock_qty: Number(entity.stock_qty ?? 0),
@@ -99,7 +98,6 @@ export class MaterialsService {
     const barcode = await this.generateUniqueBarcode();
     const entity = new Materials(
       randomUUID(),
-      dto.material_code,
       dto.material_name,
       barcode,
       dto.material_category,
@@ -124,7 +122,6 @@ export class MaterialsService {
     }
     const entity = new Materials(
       id,
-      existing.material_code, // kode tidak diubah di update
       dto.material_name ?? existing.material_name,
       existing.barcode,
       dto.material_category ?? existing.material_category,
@@ -217,7 +214,6 @@ export class MaterialsService {
         const barcode = await this.generateUniqueBarcode();
         const entity = new Materials(
           m.id,
-          m.material_code,
           m.material_name,
           barcode,
           m.material_category,

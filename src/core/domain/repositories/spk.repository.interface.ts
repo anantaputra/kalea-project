@@ -7,6 +7,7 @@ export type CreateSpkFullPayload = {
   deadline: Date;
   status: string;
   notes?: string | null;
+  sewing_cost?: number;
   created_by?: string;
   details: Array<{
     product_variant_id: string;
@@ -23,6 +24,7 @@ export type UpdateSpkFullPayload = {
   deadline: Date;
   status: string;
   notes?: string | null;
+  sewing_cost?: number;
   changed_by?: string;
   details: Array<{
     product_variant_id: string;
@@ -48,6 +50,7 @@ export type SpkFullByIdResult = {
     qty_order: number;
     qty_done: number;
     qty_reject: number;
+    qty_packing: number;
     progress: string;
     status: string;
     cost_price: number;

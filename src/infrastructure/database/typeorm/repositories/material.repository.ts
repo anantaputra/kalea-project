@@ -54,7 +54,6 @@ export class MaterialsRepository implements MaterialsRepositoryInterface {
   private mapToDomain(row: MaterialEntity): Materials {
     return new Materials(
       row.id,
-      row.material_code,
       row.material_name,
       row.barcode,
       row.material_category,
@@ -71,7 +70,6 @@ export class MaterialsRepository implements MaterialsRepositoryInterface {
   private mapToOrm(entity: Materials): MaterialEntity {
     const row = new MaterialEntity();
     if (entity.id) row.id = entity.id;
-    row.material_code = entity.material_code!;
     row.material_name = entity.material_name!;
     row.barcode = entity.barcode ?? '';
     row.material_category = entity.material_category!;

@@ -1,58 +1,45 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { SpkDetailEntity } from './SpkDetail.entity';
+import { SpkStageEntity } from './SpkStage.entity';
 
-@Entity('TB_M_MATERIALS')
-export class MaterialEntity {
+@Entity('TB_R_SPK_STAGE_HISTORY')
+export class SpkStageHistoryEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @ManyToOne(() => SpkStageEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'spk_stage_id',
+    referencedColumnName: 'id',
+  })
+  spk_stage_id: SpkStageEntity;
+
   @Column({
-    name: 'material_name',
+    name: 'field_changed',
     type: 'varchar',
-    length: 255,
     nullable: false,
   })
-  material_name: string;
+  field_changed: string;
 
   @Column({
-    name: 'barcode',
+    name: 'old_value',
     type: 'varchar',
-    length: 255,
-    nullable: true,
-    unique: true,
-  })
-  barcode: string;
-
-  @Column({
-    name: 'material_category',
-    type: 'varchar',
-    length: 255,
     nullable: false,
   })
-  material_category: string;
+  old_value: string;
 
   @Column({
-    name: 'unit_of_measure',
+    name: 'new_value',
     type: 'varchar',
-    length: 255,
     nullable: false,
   })
-  unit_of_measure: string;
-
-  @Column({
-    name: 'stock_qty',
-    type: 'numeric',
-    precision: 10,
-    scale: 2,
-    default: 0
-  })
-  stock_qty: number;
-
-  @Column({
-    name: 'is_active',
-    type: 'boolean',
-    default: true,
-  })
-  is_active: boolean;
+  new_value: string;
 
   @Column({
     name: 'created_by',

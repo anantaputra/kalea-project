@@ -1,7 +1,6 @@
 export class Materials {
   constructor(
     public id?: string,
-    public material_code?: string,
     public material_name?: string,
     public barcode?: string,
     public material_category?: string,

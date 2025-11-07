@@ -13,8 +13,11 @@ import { SpkDetailEntity } from '../entities/SpkDetail.entity';
 import { SpkBomEntity } from '../entities/SpkBom.entity';
 import { BomItemEntity } from '../entities/BomItem.entity';
 import { SpkStageEntity } from '../entities/SpkStage.entity';
+import { SpkStageHistoryEntity } from '../entities/SpkStageHistory.entity';
 import { ProductVariantEntity } from '../entities/ProductVariant.entity';
 import { MaterialEntity } from '../entities/Material.entity';
+import { DeliveryNoteDetailEntity } from '../entities/DeliveryNoteDetail.entity';
+import { DeliveryNoteEntity } from '../entities/DeliveryNote.entity';
 
 @Injectable()
 export class SpkRepository implements SpkRepositoryInterface {
@@ -43,6 +46,10 @@ export class SpkRepository implements SpkRepositoryInterface {
 
   async create(entity: Spk): Promise<Spk> {
     const row = this.mapToOrm(entity);
+    // Auto-generate barcode jika belum ada
+    if (!row.barcode || row.barcode.trim() === '') {
+      row.barcode = await this.generateUniqueBarcode();
+    }
     const saved = await this.ormRepo.save(row);
     return this.mapToDomain(saved);
   }
@@ -56,11 +63,17 @@ export class SpkRepository implements SpkRepositoryInterface {
     return this.ormRepo.manager.transaction(async (mgr) => {
       const spkHeader = new SpkEntity();
       spkHeader.spk_no = payload.spk_no;
+      // Auto-generate barcode untuk header SPK
+      spkHeader.barcode = await this.generateUniqueBarcode(mgr.getRepository(SpkEntity));
       spkHeader.buyer = payload.buyer;
       spkHeader.spk_date = payload.spk_date;
       spkHeader.deadline = payload.deadline;
       spkHeader.status = payload.status;
       spkHeader.notes = payload.notes ?? null;
+      spkHeader.sewing_cost =
+        payload.sewing_cost !== undefined && payload.sewing_cost !== null
+          ? Number(payload.sewing_cost)
+          : null;
       spkHeader.created_by = payload.created_by || 'system';
       const savedHeader = await mgr.getRepository(SpkEntity).save(spkHeader);
 
@@ -110,8 +123,8 @@ export class SpkRepository implements SpkRepositoryInterface {
         const initialStages: Array<{ stage_name: string; seq: number }> = [
           { stage_name: 'Cutting', seq: 1 },
           { stage_name: 'Jahit', seq: 2 },
-          { stage_name: 'Buang Benang', seq: 3 },
-          { stage_name: 'Stiman', seq: 4 },
+          { stage_name: 'QC 1', seq: 3 },
+          { stage_name: 'QC 2', seq: 4 },
           { stage_name: 'Packing', seq: 5 },
         ];
         for (const st of initialStages) {
@@ -167,6 +180,10 @@ export class SpkRepository implements SpkRepositoryInterface {
       spkHeader.deadline = payload.deadline;
       spkHeader.status = payload.status;
       spkHeader.notes = payload.notes ?? null;
+      if (payload.sewing_cost !== undefined) {
+        spkHeader.sewing_cost =
+          payload.sewing_cost !== null ? Number(payload.sewing_cost) : null;
+      }
       spkHeader.changed_by = payload.changed_by || 'system';
       spkHeader.changed_dt = new Date();
       const savedHeader = await mgr.getRepository(SpkEntity).save(spkHeader);
@@ -330,6 +347,19 @@ export class SpkRepository implements SpkRepositoryInterface {
         relations: { spk_detail: true },
         order: { seq: 'ASC', created_dt: 'DESC' },
       });
+      // Ambil total qty_out pengiriman untuk spk_detail ini dari Delivery Notes bertipe 'Pengiriman'
+      const dnDetailsRepo = this.ormRepo.manager.getRepository(DeliveryNoteDetailEntity);
+      const dnDetails = await dnDetailsRepo.find({
+        where: { spk_detail: { id: d.id }, item_type: 'PRODUCT' },
+        relations: { delivery_note: true },
+      });
+      const shippedOut = dnDetails
+        .filter((row) =>
+          ((row.delivery_note as DeliveryNoteEntity)?.delivery_note_type || '')
+            .toLowerCase()
+            .includes('pengiriman'),
+        )
+        .reduce((acc, row) => acc + Number(row.qty_out ?? 0), 0);
       detailResults.push({
         id: d.id,
         product_variants: {
@@ -345,6 +375,14 @@ export class SpkRepository implements SpkRepositoryInterface {
         qty_order: Number(d.qty_order),
         qty_done: Number(d.qty_done),
         qty_reject: Number(d.qty_reject),
+        qty_packing: (() => {
+          const packing = stages.find(
+            (s) => (s.stage_name || '').toLowerCase() === 'packing',
+          );
+          const packed = Number(packing?.qty_in ?? 0);
+          const remaining = packed - Number(shippedOut || 0);
+          return remaining > 0 ? remaining : 0;
+        })(),
         progress: (() => {
           const order = Number(d.qty_order) || 0;
           const done = (Number(d.qty_done) || 0) + (Number(d.qty_reject) || 0);
@@ -388,11 +426,13 @@ export class SpkRepository implements SpkRepositoryInterface {
     return new Spk(
       row.id,
       row.spk_no,
+      row.barcode ?? null,
       row.buyer,
       row.spk_date,
       row.deadline,
       row.status,
       row.notes ?? null,
+      row.sewing_cost ?? null,
       row.created_by,
       row.created_dt,
       row.changed_by ?? null,
@@ -404,11 +444,13 @@ export class SpkRepository implements SpkRepositoryInterface {
     const row = new SpkEntity();
     if (entity.id) row.id = entity.id;
     row.spk_no = entity.spk_no;
+    row.barcode = entity.barcode ?? null;
     row.buyer = entity.buyer;
     row.spk_date = entity.spk_date;
     row.deadline = entity.deadline;
     row.status = entity.status;
     row.notes = entity.notes ?? null;
+    row.sewing_cost = entity.sewing_cost ?? null;
     if (entity.created_by !== undefined)
       row.created_by = entity.created_by || 'system';
     if (entity.created_dt !== undefined) row.created_dt = entity.created_dt;
@@ -416,6 +458,32 @@ export class SpkRepository implements SpkRepositoryInterface {
       row.changed_by = entity.changed_by ?? null;
     if (entity.changed_dt !== undefined) row.changed_dt = entity.changed_dt;
     return row;
+  }
+
+  private async generateUniqueBarcode(repo?: Repository<SpkEntity>): Promise<string> {
+    const r = repo ?? this.ormRepo;
+    // Format: SPK<YYMMDDHHmmss><random6>
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const attempt = async () => {
+      const now = new Date();
+      const y = now.getFullYear().toString().slice(-2);
+      const m = pad(now.getMonth() + 1);
+      const d = pad(now.getDate());
+      const hh = pad(now.getHours());
+      const mm = pad(now.getMinutes());
+      const ss = pad(now.getSeconds());
+      const rand = Math.floor(Math.random() * 1_000_000)
+        .toString()
+        .padStart(6, '0');
+      return `SPK${y}${m}${d}${hh}${mm}${ss}${rand}`;
+    };
+    for (let i = 0; i < 3; i++) {
+      const code = await attempt();
+      const exists = await r.findOne({ where: { barcode: code } });
+      if (!exists) return code;
+    }
+    // Fallback jika collision terus
+    return `SPK${Date.now()}`;
   }
 
   async createStage(payload: {
@@ -493,12 +561,23 @@ export class SpkRepository implements SpkRepositoryInterface {
           throw new Error(`Seq sudah digunakan pada SPK Detail tersebut`);
         }
       }
+      // Snapshot old values for history comparison
+      const old = {
+        stage_name: stage.stage_name,
+        seq: stage.seq,
+        qty_in: stage.qty_in,
+        qty_reject: stage.qty_reject,
+        pic_id: stage.pic_id,
+        start_at: stage.start_at,
+        end_at: stage.end_at,
+        status: stage.status,
+      };
 
+      // Apply incoming changes
       if (payload.stage_name != null) stage.stage_name = payload.stage_name;
       if (payload.seq != null) stage.seq = Number(payload.seq);
       if (payload.qty_in != null) stage.qty_in = Number(payload.qty_in);
-      if (payload.qty_reject != null)
-        stage.qty_reject = Number(payload.qty_reject);
+      if (payload.qty_reject != null) stage.qty_reject = Number(payload.qty_reject);
       if (payload.pic_id != null) stage.pic_id = payload.pic_id;
       if (payload.start_at) stage.start_at = payload.start_at;
       if (payload.end_at) stage.end_at = payload.end_at;
@@ -507,6 +586,36 @@ export class SpkRepository implements SpkRepositoryInterface {
       stage.changed_dt = new Date();
 
       const saved = await repo.save(stage);
+
+      // Insert history rows per changed field
+      const histRepo = mgr.getRepository(SpkStageHistoryEntity);
+      const toStr = (v: any) => {
+        if (v == null) return '';
+        if (v instanceof Date) return v.toISOString();
+        return String(v);
+      };
+      const changes: Array<{ key: keyof typeof old; oldVal: any; newVal: any }> = [
+        { key: 'stage_name', oldVal: old.stage_name, newVal: saved.stage_name },
+        { key: 'seq', oldVal: old.seq, newVal: saved.seq },
+        { key: 'qty_in', oldVal: old.qty_in, newVal: saved.qty_in },
+        { key: 'qty_reject', oldVal: old.qty_reject, newVal: saved.qty_reject },
+        { key: 'pic_id', oldVal: old.pic_id, newVal: saved.pic_id },
+        { key: 'start_at', oldVal: old.start_at, newVal: saved.start_at },
+        { key: 'end_at', oldVal: old.end_at, newVal: saved.end_at },
+        { key: 'status', oldVal: old.status, newVal: saved.status },
+      ];
+      for (const ch of changes) {
+        const changed = toStr(ch.oldVal) !== toStr(ch.newVal);
+        if (!changed) continue;
+        const hist = new SpkStageHistoryEntity();
+        hist.spk_stage_id = saved;
+        hist.field_changed = String(ch.key);
+        hist.old_value = toStr(ch.oldVal);
+        hist.new_value = toStr(ch.newVal);
+        hist.created_by = payload.changed_by || 'system';
+        await histRepo.save(hist);
+      }
+
       return { id: saved.id };
     });
   }

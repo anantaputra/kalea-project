@@ -130,7 +130,6 @@ export class ProductVariantController {
           materials: [
             {
               material_id: 'f0e92c26-db2d-41a5-9324-723940003639',
-              material_code: 'MAT0005',
               material_name: 'Benang Polyester 40/2',
               material_category: 'kain',
               unit_of_measure: 'meter',
@@ -187,7 +186,6 @@ export class ProductVariantController {
 
         return {
           material_id: i.material?.id ?? null,
-          material_code: i.material?.material_code ?? null,
           material_name: i.material?.material_name ?? null,
           material_category: catVal,
           unit_of_measure: uomVal,

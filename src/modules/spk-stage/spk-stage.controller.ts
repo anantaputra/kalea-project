@@ -321,4 +321,11 @@ export class SpkStageController {
     const data = await this.service.approval(dto, lang);
     return updated(data, tUpdated('SPK Stage', lang));
   }
+
+  @Get('history')
+  async history(@Param('id') id: string, @Headers() headers: Record<string, string>) {
+    const lang = headers['accept-language'];
+    const data = await this.service.history(id);
+    return ok(data, tRetrieved('Spk Stage History', lang));
+  }
 }

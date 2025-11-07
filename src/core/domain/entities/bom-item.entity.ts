@@ -19,7 +19,6 @@ export class BomItem {
     } | null,
     public material?: {
       id: string;
-      material_code: string;
       material_name: string;
       material_category: string;
       unit_of_measure: string;

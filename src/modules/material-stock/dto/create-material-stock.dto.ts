@@ -8,6 +8,10 @@ export class CreateMaterialStockDto {
   @IsNumber()
   qty!: number;
 
+  @IsNotEmpty()
+  @IsNumber()
+  price!: number;
+
   @IsOptional()
   @IsString()
   user_id?: string;

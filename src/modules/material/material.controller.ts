@@ -27,7 +27,6 @@ export class MaterialsController {
         data: [
           {
             id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-            material_code: 'MAT001',
             material_name: 'Kain Cotton',
             material_category: 'FABRIC',
             unit_of_measure: 'YARD',
@@ -116,7 +115,6 @@ export class MaterialsController {
         success: true,
         data: {
           id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-          material_code: 'MAT001',
           material_name: 'Kain Cotton',
           material_category: 'FABRIC',
           unit_of_measure: 'YARD',
@@ -152,7 +150,6 @@ export class MaterialsController {
       default: {
         summary: 'Contoh body',
         value: {
-          material_code: '',
           material_name: 'Kain Cotton',
           material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
           unit_of_measure: '8b7f71ee-c078-4dcd-91b1-2648e1b871bb',
@@ -169,7 +166,6 @@ export class MaterialsController {
         success: true,
         data: {
           id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-          material_code: 'MAT001',
           material_name: 'Kain Cotton',
           material_category: 'FABRIC',
           unit_of_measure: 'YARD',
@@ -222,7 +218,6 @@ export class MaterialsController {
         success: true,
         data: {
           id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-          material_code: 'MAT001',
           material_name: 'Kain Cotton',
           material_category: 'FABRIC',
           unit_of_measure: 'YARD',

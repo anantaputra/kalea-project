@@ -2,9 +2,6 @@ import { IsString, IsBoolean, IsOptional } from 'class-validator';
 
 export class CreateMaterialsDto {
   @IsString()
-  material_code: string;
-
-  @IsString()
   material_name: string;
 
   @IsString()

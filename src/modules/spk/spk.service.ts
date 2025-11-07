@@ -55,11 +55,13 @@ export class SpkService {
     return {
       id: entity.id,
       spk_no: entity.spk_no,
+      barcode: entity.barcode ?? null,
       buyer: entity.buyer,
       spk_date: toIso(entity.spk_date),
       deadline: toIso(entity.deadline),
       status: entity.status,
       notes: entity.notes ?? null,
+      sewing_cost: entity.sewing_cost ?? null,
       created_by: entity.created_by,
       created_dt: toIso(entity.created_dt),
       changed_by: entity.changed_by ?? null,
@@ -229,6 +231,7 @@ export class SpkService {
       deadline: new Date(dto.deadline),
       status: dto.status,
       notes: dto.notes ?? null,
+      sewing_cost: dto.sewing_cost !== undefined ? Number(dto.sewing_cost) : undefined,
       created_by: dto.user_id ?? 'system',
       details: dto.details.map((d) => ({
         product_variant_id: d.product_variant_id,
@@ -255,6 +258,7 @@ export class SpkService {
       deadline: dto.deadline ? new Date(dto.deadline) : existing.deadline,
       status: dto.status ?? existing.status,
       notes: dto.notes ?? existing.notes ?? null,
+      sewing_cost: dto.sewing_cost !== undefined ? Number(dto.sewing_cost) : undefined,
       changed_by: dto.user_id ?? 'system',
       details: (dto.details ?? []).map((d) => ({
         product_variant_id: d.product_variant_id,

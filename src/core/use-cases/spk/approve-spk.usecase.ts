@@ -32,11 +32,13 @@ export class ApproveSpkUseCase {
     const updatedHeader = new Spk(
       existing.id,
       existing.spk_no,
+      existing.barcode ?? null,
       existing.buyer,
       existing.spk_date,
       existing.deadline,
       payload.status,
       existing.notes,
+      existing.sewing_cost ?? null,
       existing.created_by,
       existing.created_dt,
       payload.user_id ?? 'system',

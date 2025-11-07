@@ -79,6 +79,13 @@ export class DeliveryNoteDetailEntity {
   status: string;
 
   @Column({
+    name: 'barcode',
+    type: 'varchar',
+    nullable: true,
+  })
+  barcode: string | null;
+  
+  @Column({
     name: 'created_by',
     type: 'varchar',
     default: 'system',

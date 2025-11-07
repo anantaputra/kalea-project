@@ -57,7 +57,6 @@ export class BomItemController {
             },
             material: {
               id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-              material_code: 'MAT001',
               material_name: 'Kain Cotton',
               material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
               unit_of_measure: 'YARD'
@@ -116,7 +115,6 @@ export class BomItemController {
           },
           material: {
             id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-            material_code: 'MAT001',
             material_name: 'Kain Cotton',
             material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
             unit_of_measure: 'YARD'
@@ -174,7 +172,6 @@ export class BomItemController {
           },
           material: {
             id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-            material_code: 'MAT001',
             material_name: 'Kain Cotton',
             material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
             unit_of_measure: 'YARD'
@@ -235,7 +232,6 @@ export class BomItemController {
           materials: [
             {
               id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-              material_code: 'MAT001',
               material_name: 'Kain Cotton',
               material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
               unit_of_measure: 'YARD'
@@ -295,7 +291,6 @@ export class BomItemController {
           },
           material: {
             id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-            material_code: 'MAT001',
             material_name: 'Kain Cotton',
             material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
             unit_of_measure: 'YARD'
@@ -357,7 +352,6 @@ export class BomItemController {
           materials: [
             {
               id: '3b97b2b0-3c1a-45a9-b536-28b9d6bd1a28',
-              material_code: 'MAT001',
               material_name: 'Kain Cotton',
               material_category: '549c548b-a1e2-4618-95c0-95de1ab03eba',
               unit_of_measure: 'YARD'

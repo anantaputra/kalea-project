@@ -18,6 +18,7 @@ import { SpkDetailEntity } from '../../infrastructure/database/typeorm/entities/
 import { SpkBomEntity } from '../../infrastructure/database/typeorm/entities/SpkBom.entity';
 import { BomItemEntity } from '../../infrastructure/database/typeorm/entities/BomItem.entity';
 import { SpkStageEntity } from '../../infrastructure/database/typeorm/entities/SpkStage.entity';
+import { SpkStageHistoryEntity } from '../../infrastructure/database/typeorm/entities/SpkStageHistory.entity';
 import { ProductVariantEntity } from '../../infrastructure/database/typeorm/entities/ProductVariant.entity';
 import { MaterialEntity } from '../../infrastructure/database/typeorm/entities/Material.entity';
 import { ApprovalTransactionEntity } from '../../infrastructure/database/typeorm/entities/ApprovalTransaction.entity';
@@ -39,6 +40,7 @@ import { DeliveryNoteDetailEntity } from '../../infrastructure/database/typeorm/
       SpkBomEntity,
       BomItemEntity,
       SpkStageEntity,
+      SpkStageHistoryEntity,
       ProductVariantEntity,
       MaterialEntity,
       ApprovalTransactionEntity,

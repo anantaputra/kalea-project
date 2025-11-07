@@ -49,6 +49,10 @@ export class CreateSpkDto {
   @IsOptional()
   notes?: string;
 
+  @IsNumberString()
+  @IsOptional()
+  sewing_cost?: string; // numeric string; will be coerced to number
+
   @IsString()
   @IsOptional()
   user_id?: string;

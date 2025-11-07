@@ -1,11 +1,12 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { CreateSpkStageUseCase, UpdateSpkStageUseCase } from '../../core/use-cases/spk';
 import type { CreateSpkStageDto } from './dto/create-spk-stage.dto';
 import type { UpdateSpkStageDto } from './dto/update-spk-stage.dto';
 import { SpkStageEntity } from '../../infrastructure/database/typeorm/entities/SpkStage.entity';
 import { SpkDetailEntity } from '../../infrastructure/database/typeorm/entities/SpkDetail.entity';
+import { SpkStageHistoryEntity } from '../../infrastructure/database/typeorm/entities/SpkStageHistory.entity';
 import type { ApprovalSpkDto } from '../spk/dto/approval-spk.dto';
 import type { ApprovalRepository } from '../../core/domain/repositories/approval.repository.interface';
 import { APPROVAL_REPOSITORY } from '../../core/domain/repositories/approval.repository.interface';
@@ -20,6 +21,8 @@ export class SpkStageService {
     private readonly stageRepo: Repository<SpkStageEntity>,
     @InjectRepository(SpkDetailEntity)
     private readonly detailRepo: Repository<SpkDetailEntity>,
+    @InjectRepository(SpkStageHistoryEntity)
+    private readonly stageHistoryRepo: Repository<SpkStageHistoryEntity>,
     @Inject(APPROVAL_REPOSITORY)
     private readonly approvalRepo: ApprovalRepository,
   ) {}
@@ -78,24 +81,48 @@ export class SpkStageService {
       order: { seq: 'ASC' },
     });
 
-    return stages.map((s) => ({
-      id: s.id,
-      spk_detail_id: s.spk_detail?.id ?? '',
-      stage_name: s.stage_name,
-      seq: Number(s.seq ?? 0),
-      qty_in: Number(s.qty_in ?? 0),
-      qty_reject: Number(s.qty_reject ?? 0),
-      pic_id: s.pic_id,
-      start_at: s.start_at,
-      end_at: s.end_at,
-      status: s.status,
-      status_approval: s.status_approval ?? null,
-      status_approved: s.is_approved ? (s.status_approval ?? 'APPROVED') : 'WAITING APPROVAL',
-      created_by: s.created_by,
-      created_dt: s.created_dt,
-      changed_by: s.changed_by ?? null,
-      changed_dt: s.changed_dt ?? null,
-    }));
+    // Tentukan approval per seq dan seq minimum untuk penanda stage pertama
+    const approvalsBySeq = new Map<number, boolean>();
+    const rejectionsBySeq = new Map<number, number>();
+    stages.forEach((st) => {
+      approvalsBySeq.set(Number(st.seq ?? 0), !!st.is_approved);
+      rejectionsBySeq.set(Number(st.seq ?? 0), Number(st.qty_reject ?? 0));
+    });
+    const minSeq = stages.length
+      ? Math.min(...stages.map((st) => Number(st.seq ?? 0)))
+      : 0;
+
+    return stages.map((s) => {
+      const seqNum = Number(s.seq ?? 0);
+      const isFirstStage = seqNum === minSeq;
+      const prevApproved = approvalsBySeq.get(seqNum - 1) === true;
+
+      const qtyOrder = Number(s.spk_detail?.qty_order ?? 0);
+      const prevReject = Number(rejectionsBySeq.get(seqNum - 1) ?? 0);
+
+      return {
+        id: s.id,
+        spk_detail_id: s.spk_detail?.id ?? '',
+        stage_name: s.stage_name,
+        seq: Number(s.seq ?? 0),
+        // Stage pertama: batas max = qty_order. Stage berikutnya: qty_order - qty_reject stage sebelumnya
+        qty_in_max: isFirstStage ? qtyOrder : Math.max(0, qtyOrder - prevReject),
+        qty_in: Number(s.qty_in ?? 0),
+        qty_reject: Number(s.qty_reject ?? 0),
+        pic_id: s.pic_id,
+        start_at: s.start_at,
+        end_at: s.end_at,
+        status: s.status,
+        // Editable jika stage pertama, atau stage sebelumnya sudah approve
+        is_editable: isFirstStage ? true : prevApproved,
+        status_approval: s.status_approval ?? null,
+        status_approved: s.is_approved ? (s.status_approval ?? 'APPROVED') : 'WAITING APPROVAL',
+        created_by: s.created_by,
+        created_dt: s.created_dt,
+        changed_by: s.changed_by ?? null,
+        changed_dt: s.changed_dt ?? null,
+      };
+    });
   }
 
   async findStageSpkDetailNotApproved(id: string) {
@@ -251,5 +278,23 @@ export class SpkStageService {
       changed_by: saved.changed_by ?? null,
       changed_dt: saved.changed_dt ?? null,
     };
+  }
+
+  async history(stageId: string) {
+    const rows = await this.stageHistoryRepo.find({
+      where: { spk_stage_id: { id: stageId }, field_changed: Not(In(['start_at', 'end_at'])) },
+      relations: { spk_stage_id: true },
+      order: { created_dt: 'DESC' },
+    });
+
+    return rows.map((h) => ({
+      id: h.id,
+      spk_stage_id: (h.spk_stage_id as any)?.id ?? '',
+      field_changed: h.field_changed,
+      old_value: h.old_value,
+      new_value: h.new_value,
+      changed_by: h.created_by,
+      changed_dt: h.created_dt,
+    }));
   }
 }

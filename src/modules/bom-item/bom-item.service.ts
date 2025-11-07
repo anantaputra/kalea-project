@@ -54,7 +54,7 @@ export class BomItemService {
                 )
               )?.system_value ?? e.material.unit_of_measure
             : base.material && (base.material as any).unit_of_measure;
-          if (base.material && 'material_code' in (base.material as any)) {
+          if (base.material) {
             (base.material as any).material_category = catLabel ?? (base.material as any).material_category;
             (base.material as any).unit_of_measure = uomLabel ?? (base.material as any).unit_of_measure;
           }
@@ -71,7 +71,7 @@ export class BomItemService {
       throw new NotFoundException(tNotFound('BOM Item', lang));
     }
     const base = this.mapToResponse(existing);
-    if (existing.material && base.material && 'material_code' in (base.material as any)) {
+    if (existing.material && base.material) {
       const catLabel = existing.material.material_category
         ? (
             await this.findByTypeCdUseCase.execute(
@@ -260,7 +260,6 @@ export class BomItemService {
       material: e.material
         ? {
             id: e.material.id,
-            material_code: e.material.material_code,
             material_name: e.material.material_name,
             material_category: e.material.material_category,
             unit_of_measure: e.material.unit_of_measure,
@@ -293,7 +292,6 @@ export class BomItemService {
       .filter((i) => !!i.material)
       .map((i) => ({
         id: i.material!.id,
-        material_code: i.material!.material_code,
         material_name: i.material!.material_name,
         material_category: i.material!.material_category,
         unit_of_measure: i.material!.unit_of_measure,

@@ -74,7 +74,6 @@ export class BomItemRepository implements BomItemRepositoryInterface {
       row.material
         ? {
             id: row.material.id,
-            material_code: row.material.material_code,
             material_name: row.material.material_name,
             material_category: row.material.material_category,
             unit_of_measure: row.material.unit_of_measure,

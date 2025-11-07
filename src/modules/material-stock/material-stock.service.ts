@@ -55,7 +55,7 @@ export class MaterialStockService {
           material: m
             ? {
                 id: m.id ?? '',
-                material_code: m.material_code ?? '',
+                // material_code: m.material_code ?? '',
                 material_name: m.material_name ?? '',
                 material_category: catLabel,
                 unit_of_measure: uomLabel,
@@ -63,7 +63,7 @@ export class MaterialStockService {
               }
             : {
                 id: s.material_id ?? '',
-                material_code: '',
+                // material_code: '',
                 material_name: '',
                 material_category: '',
                 unit_of_measure: '',
@@ -108,7 +108,7 @@ export class MaterialStockService {
       material: m
         ? {
             id: m.id ?? '',
-            material_code: m.material_code ?? '',
+            // material_code: m.material_code ?? '',
             material_name: m.material_name ?? '',
             material_category: catLabel,
             unit_of_measure: uomLabel,
@@ -116,7 +116,7 @@ export class MaterialStockService {
           }
         : {
             id: s.material_id ?? '',
-            material_code: '',
+            // material_code: '',
             material_name: '',
             material_category: '',
             unit_of_measure: '',
@@ -136,7 +136,9 @@ export class MaterialStockService {
       undefined,
       dto.material_id,
       dto.qty,
+      dto.price,
       false,
+      undefined,
       'system',
       new Date(),
       null,
@@ -149,7 +151,6 @@ export class MaterialStockService {
       material: m
         ? {
             id: m.id ?? '',
-            material_code: m.material_code ?? '',
             material_name: m.material_name ?? '',
             material_category: m.material_category ?? '',
             unit_of_measure: m.unit_of_measure ?? '',
@@ -157,7 +158,6 @@ export class MaterialStockService {
           }
         : {
             id: created.material_id ?? '',
-            material_code: '',
             material_name: '',
             material_category: '',
             unit_of_measure: '',
@@ -182,7 +182,9 @@ export class MaterialStockService {
       id,
       dto.material_id ?? existing.material_id,
       dto.qty ?? existing.qty,
+      dto.price ?? existing.price,
       existing.is_approved, // jangan ubah nilai is_approved pada update biasa
+      existing.approved_dt,
       existing.created_by ?? 'system',
       existing.created_dt ?? new Date(),
       dto.user_id ?? existing.changed_by ?? 'system',
@@ -195,7 +197,6 @@ export class MaterialStockService {
       material: m
         ? {
             id: m.id ?? '',
-            material_code: m.material_code ?? '',
             material_name: m.material_name ?? '',
             material_category: m.material_category ?? '',
             unit_of_measure: m.unit_of_measure ?? '',
@@ -203,7 +204,6 @@ export class MaterialStockService {
           }
         : {
             id: saved.material_id ?? '',
-            material_code: '',
             material_name: '',
             material_category: '',
             unit_of_measure: '',
@@ -230,7 +230,6 @@ export class MaterialStockService {
     });
     return {
       id: savedMaterial.id ?? '',
-      material_code: savedMaterial.material_code ?? '',
       material_name: savedMaterial.material_name ?? '',
       barcode: savedMaterial.barcode ?? '',
       material_category: savedMaterial.material_category ?? '',

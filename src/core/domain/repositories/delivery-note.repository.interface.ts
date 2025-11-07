@@ -69,6 +69,7 @@ export type DeliveryNoteFullByIdResult = {
     spk_detail_id: string;
     item_type: string;
     item_id: string;
+    barcode: string | null;
     qty_out: number;
     qty_in: number;
     labor_cost: number;

@@ -14,6 +14,7 @@ import { MaterialEntity } from '../entities/Material.entity';
 import type { CreateDeliveryNoteFullPayload } from '../../../../core/domain/repositories/delivery-note.repository.interface';
 import type { UpdateDeliveryNoteFullPayload } from '../../../../core/domain/repositories/delivery-note.repository.interface';
 import { DeliveryNoteEntity } from '../entities/DeliveryNote.entity';
+import { ProductVariantEntity } from '../entities/ProductVariant.entity';
 
 @Injectable()
 export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
@@ -174,6 +175,17 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
             : d.material_id || '';
         detail.item_id = itemId;
 
+        // Set barcode berdasarkan item_type
+        if ((d.item_type || '').toUpperCase() === 'PRODUCT' && d.product_variant_id) {
+          const pv = await mgr.getRepository(ProductVariantEntity).findOne({ where: { id: d.product_variant_id } });
+          detail.barcode = pv?.barcode ?? null;
+        } else if ((d.item_type || '').toUpperCase() === 'MATERIAL' && d.material_id) {
+          const mat = await mgr.getRepository(MaterialEntity).findOne({ where: { id: d.material_id } });
+          detail.barcode = mat?.barcode ?? null;
+        } else {
+          detail.barcode = null;
+        }
+
         detail.qty_out = Number(d.qty_out) || 0;
         detail.qty_in = Number(d.qty_in) || 0;
         detail.labor_cost = Number(d.labor_cost ?? 0) || 0;
@@ -239,6 +251,16 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
           existing.item_type = d.item_type;
           const itemId = d.item_type === 'PRODUCT' ? d.product_variant_id || '' : d.material_id || '';
           existing.item_id = itemId;
+          // Update barcode sesuai item_type
+          if ((d.item_type || '').toUpperCase() === 'PRODUCT' && d.product_variant_id) {
+            const pv = await mgr.getRepository(ProductVariantEntity).findOne({ where: { id: d.product_variant_id } });
+            existing.barcode = pv?.barcode ?? null;
+          } else if ((d.item_type || '').toUpperCase() === 'MATERIAL' && d.material_id) {
+            const mat = await mgr.getRepository(MaterialEntity).findOne({ where: { id: d.material_id } });
+            existing.barcode = mat?.barcode ?? null;
+          } else {
+            existing.barcode = null;
+          }
           if (d.qty_out !== undefined) existing.qty_out = Number(d.qty_out) || 0;
           if (d.qty_in !== undefined) existing.qty_in = Number(d.qty_in) || 0;
           if (d.labor_cost !== undefined) existing.labor_cost = Number(d.labor_cost) || 0;
@@ -262,6 +284,16 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
           }
           detail.item_type = d.item_type;
           detail.item_id = d.item_type === 'PRODUCT' ? d.product_variant_id || '' : d.material_id || '';
+          // Set barcode untuk baris baru
+          if ((d.item_type || '').toUpperCase() === 'PRODUCT' && d.product_variant_id) {
+            const pv = await mgr.getRepository(ProductVariantEntity).findOne({ where: { id: d.product_variant_id } });
+            detail.barcode = pv?.barcode ?? null;
+          } else if ((d.item_type || '').toUpperCase() === 'MATERIAL' && d.material_id) {
+            const mat = await mgr.getRepository(MaterialEntity).findOne({ where: { id: d.material_id } });
+            detail.barcode = mat?.barcode ?? null;
+          } else {
+            detail.barcode = null;
+          }
           detail.qty_out = Number(d.qty_out) || 0;
           detail.qty_in = Number(d.qty_in) || 0;
           detail.labor_cost = Number(d.labor_cost ?? 0) || 0;
@@ -311,9 +343,9 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
     );
     const matRepo = this.ormRepo.manager.getRepository(MaterialEntity);
     const mats = materialIds.length ? await matRepo.find({ where: { id: In(materialIds) } }) : [];
-    const matMap = new Map<string | number, string>();
+    const matMap = new Map<string | number, { name: string; barcode: string | null }>();
     for (const m of mats) {
-      matMap.set(m.id, m.material_name);
+      matMap.set(m.id, { name: m.material_name, barcode: m.barcode ?? null });
     }
 
     const toUiItemType = (t: string) => {
@@ -329,8 +361,13 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
       const item_name = isProduct
         ? (pv?.product_name ?? '')
         : isMaterial
-        ? (matMap.get(d.item_id) ?? '')
+        ? (matMap.get(d.item_id)?.name ?? '')
         : '';
+      const barcode = isProduct
+        ? (pv?.barcode ?? d.barcode ?? null)
+        : isMaterial
+        ? (matMap.get(d.item_id)?.barcode ?? d.barcode ?? null)
+        : d.barcode ?? null;
       return {
         id: d.id,
         spk_id: (d.spk_detail as SpkDetailEntity)?.id ? (d.spk as SpkEntity)?.id ?? '' : '',
@@ -338,6 +375,7 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
         item_type: toUiItemType(d.item_type),
         item_id: d.item_id,
         item_name,
+        barcode,
         qty_out: Number(d.qty_out) || 0,
         qty_in: Number(d.qty_in) || 0,
         labor_cost: Number(d.labor_cost) || 0,

@@ -46,7 +46,6 @@ export class ApproveMaterialStockUseCase {
 
     const updated = new Materials(
       existingMaterial.id,
-      existingMaterial.material_code,
       existingMaterial.material_name,
       existingMaterial.barcode,
       existingMaterial.material_category,
@@ -68,6 +67,7 @@ export class ApproveMaterialStockUseCase {
       material_id: stock.material_id,
       qty: stock.qty,
       is_approved: stockApproved,
+      approved_dt: stockApproved ? new Date() : undefined,
       created_by: stock.created_by,
       created_dt: stock.created_dt,
       changed_by: payload.user_id || 'system',

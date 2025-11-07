@@ -6,6 +6,10 @@ export class UpdateMaterialStockDto {
   @IsNotEmpty()
   @IsNumber()
   qty!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  price!: number;
   
   @IsOptional()
   @IsString()
