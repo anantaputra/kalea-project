@@ -232,6 +232,7 @@ export class SpkController {
           deadline: '2025-11-15',
           status: 'PENDING',
           notes: 'Catatan SPK',
+          sewing_cost: 100000.00,
           created_by: 'system',
           created_dt: '2025-10-23T13:15:19.736Z',
           changed_by: 'system',
