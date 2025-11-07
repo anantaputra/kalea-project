@@ -1,4 +1,6 @@
 import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   CreateDeliveryNoteUseCase,
   UpdateDeliveryNoteUseCase,
@@ -11,6 +13,9 @@ import { DeliveryNote } from '../../core/domain/entities/delivery-note.entity';
 import type { ApprovalDeliveryNoteDto } from './dto/approval-delivery-note.dto';
 import { DELIVERY_NOTE_REPOSITORY } from 'src/core/domain/repositories/delivery-note.repository.interface';
 import { DeliveryNoteRepository } from 'src/infrastructure/database/typeorm/repositories/delivery-note.repository';
+import { DeliveryNoteDetailEntity } from 'src/infrastructure/database/typeorm/entities/DeliveryNoteDetail.entity';
+import { SpkDetailEntity } from 'src/infrastructure/database/typeorm/entities/SpkDetail.entity';
+import { SpkEntity } from 'src/infrastructure/database/typeorm/entities/Spk.entity';
 import type { CreateDeliveryNoteDto } from './dto/create-delivery-note.dto';
 import type { UpdateDeliveryNoteDto } from './dto/update-delivery-note.dto';
 import { tNotFound } from 'src/core/common/i18n/messages';
@@ -28,6 +33,9 @@ export class DeliveryNoteService {
     private readonly findFullByIdUseCase: FindDeliveryNoteFullByIdUseCase,
     private readonly updateFullUseCase: UpdateDeliveryNoteFullUseCase,
     private readonly systemMasterService: SystemMasterService,
+    @InjectRepository(DeliveryNoteDetailEntity) private readonly dnDetailRepo: Repository<DeliveryNoteDetailEntity>,
+    @InjectRepository(SpkDetailEntity) private readonly spkDetailRepo: Repository<SpkDetailEntity>,
+    @InjectRepository(SpkEntity) private readonly spkRepo: Repository<SpkEntity>,
   ) {}
 
   async findTypes(lang?: string) {
@@ -214,6 +222,49 @@ export class DeliveryNoteService {
       notes: dto.notes ?? null,
       user_id: dto.user_id ?? 'system',
     });
+    // Setelah approval, cek semua SPK terkait apakah sudah selesai
+    try {
+      // Ambil semua detail DN yg berelasi ke SPK
+      const dnDetails = await this.dnDetailRepo.find({
+        where: { delivery_note: { id: saved.id } as any },
+        relations: ['spk'],
+      });
+      // Kumpulkan unique spk_id
+      const spkIds = Array.from(
+        new Set(
+          dnDetails
+            .map((d) => d.spk?.id)
+            .filter((id): id is string => typeof id === 'string' && !!id)
+        )
+      );
+      for (const spkId of spkIds) {
+        // Hitung total detail dan total detail yg selesai (qty_done + qty_reject = qty_order)
+        const totalDetails = await this.spkDetailRepo.count({ where: { spk: { id: spkId } as any } });
+        const completedDetails = await this.spkDetailRepo
+          .createQueryBuilder('sd')
+          .where('sd.spk_id = :spkId', { spkId })
+          .andWhere('(COALESCE(sd.qty_done,0) + COALESCE(sd.qty_reject,0)) = sd.qty_order')
+          .getCount();
+
+          console.log("totalDetails")
+          console.log(totalDetails)
+          console.log("completedDetails")
+          console.log(completedDetails)
+
+        if (totalDetails > 0 && completedDetails === totalDetails) {
+          // Update status SPK ke DONE
+          await this.spkRepo.update(spkId, {
+            status: 'DONE',
+            changed_by: dto.user_id ?? 'system',
+            changed_dt: new Date(),
+          } as any);
+        }
+      }
+    } catch (err) {
+      // Jangan gagal approval hanya karena pengecekan/update status SPK bermasalah
+      // Bisa ditambahkan logging jika diperlukan
+    }
+
     const full = await this.findFullByIdUseCase.execute(saved.id);
     return full ?? { id: saved.id, delivery_note_no: saved.delivery_note_no, status: dto.status };
   }
