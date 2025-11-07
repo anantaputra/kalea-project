@@ -17,6 +17,7 @@ export type CreateDeliveryNoteFullPayload = {
     qty_out: number | string;
     qty_in: number | string;
     labor_cost?: number | string;
+    cost_price?: number | string;
   }>;
 };
 
@@ -38,6 +39,7 @@ export type UpdateDeliveryNoteFullPayload = {
     qty_out?: number | string;
     qty_in?: number | string;
     labor_cost?: number | string;
+    cost_price?: number | string;
   }>;
 };
 

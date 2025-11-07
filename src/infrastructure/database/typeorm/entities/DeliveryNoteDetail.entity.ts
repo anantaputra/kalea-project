@@ -84,6 +84,13 @@ export class DeliveryNoteDetailEntity {
     nullable: true,
   })
   barcode: string | null;
+
+  @Column({
+    name: 'cost_price',
+    type: 'varchar',
+    nullable: true,
+  })
+  cost_price: string | null;
   
   @Column({
     name: 'created_by',

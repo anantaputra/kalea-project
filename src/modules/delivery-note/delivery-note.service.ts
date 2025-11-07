@@ -66,6 +66,21 @@ export class DeliveryNoteService {
   }
 
   async create(dto: CreateDeliveryNoteDto, _lang?: string) {
+    // Validasi qty_out untuk tipe pengiriman: tidak boleh melebihi qty_packing (Packing.qty_in - total qty_out DN pengiriman)
+    const isPengiriman = ((dto.delivery_note_type || '').toLowerCase()).includes('pengiriman');
+    if (isPengiriman) {
+      for (const d of dto.details || []) {
+        const itemType = (d.item_type || '').toUpperCase();
+        const sdid = d.spk_detail_id;
+        if (itemType === 'PRODUCT' && sdid) {
+          const remaining = await this.repo.getRemainingPackingQty(sdid);
+          const proposed = Number(d.qty_out ?? 0);
+          if (proposed > remaining) {
+            throw new BadRequestException('barang tidak mencukupi');
+          }
+        }
+      }
+    }
     const payload = {
       delivery_note_no: dto.delivery_note_no,
       delivery_note_date: dto.delivery_note_date,
@@ -83,6 +98,7 @@ export class DeliveryNoteService {
         qty_out: Number(d.qty_out ?? 0),
         qty_in: Number(d.qty_in ?? 0),
         labor_cost: Number(d.labor_cost ?? 0),
+        cost_price: d.hpp !== undefined && d.hpp !== null ? Number(d.hpp) : undefined,
       })),
     };
     const created = await this.createFullUseCase.execute(payload);
@@ -94,6 +110,25 @@ export class DeliveryNoteService {
     const existing = await this.findFullByIdUseCase.execute(id);
     if (!existing) {
       throw new NotFoundException(tNotFound('Surat Jalan', lang));
+    }
+    // Validasi qty_out untuk tipe pengiriman pada update
+    {
+      const type = (dto.delivery_note_type ?? existing.delivery_note_type) || '';
+      const isPengiriman = type.toLowerCase().includes('pengiriman');
+      if (isPengiriman) {
+        for (const d of dto.details || []) {
+          const itemType = (d.item_type || '').toUpperCase();
+          const sdid = d.spk_detail_id;
+          const hasQtyOut = d.qty_out !== undefined && d.qty_out !== null;
+          if (itemType === 'PRODUCT' && sdid && hasQtyOut) {
+            const remaining = await this.repo.getRemainingPackingQty(sdid, existing.id);
+            const proposed = Number(d.qty_out ?? 0);
+            if (proposed > remaining) {
+              throw new BadRequestException('barang tidak mencukupi');
+            }
+          }
+        }
+      }
     }
     const payload = {
       id,

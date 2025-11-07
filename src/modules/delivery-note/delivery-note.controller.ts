@@ -363,6 +363,7 @@ export class DeliveryNoteController {
               qty_out: 50,
               qty_in: 0,
               labor_cost: 0,
+              hpp: 95000,
             }
           ]
         },
@@ -463,6 +464,7 @@ export class DeliveryNoteController {
               qty_out: 50,
               qty_in: 0,
               labor_cost: 0,
+              hpp: 95000,
             }
           ]
         },

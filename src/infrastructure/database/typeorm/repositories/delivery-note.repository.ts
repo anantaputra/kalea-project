@@ -15,6 +15,7 @@ import type { CreateDeliveryNoteFullPayload } from '../../../../core/domain/repo
 import type { UpdateDeliveryNoteFullPayload } from '../../../../core/domain/repositories/delivery-note.repository.interface';
 import { DeliveryNoteEntity } from '../entities/DeliveryNote.entity';
 import { ProductVariantEntity } from '../entities/ProductVariant.entity';
+import { SpkStageEntity } from '../entities/SpkStage.entity';
 
 @Injectable()
 export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
@@ -26,6 +27,44 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
   async findAll(): Promise<DeliveryNote[]> {
     const rows = await this.ormRepo.find();
     return rows.map((row) => this.mapToDomain(row));
+  }
+
+  /**
+   * Hitung sisa qty_packing untuk sebuah SPK Detail.
+   * remaining = qty_in(stage 'Packing') - total qty_out dari Delivery Note bertipe pengiriman.
+   * Jika excludeDeliveryNoteId diberikan, baris dari DN tersebut tidak dihitung (untuk validasi update).
+   */
+  async getRemainingPackingQty(spk_detail_id: string, excludeDeliveryNoteId?: string): Promise<number> {
+    if (!spk_detail_id) return 0;
+    const mgr = this.ormRepo.manager;
+    // Ambil qty_in dari stage 'Packing' untuk spk_detail ini
+    const packingStage = await mgr.getRepository(SpkStageEntity).findOne({
+      where: {
+        spk_detail: { id: spk_detail_id },
+        stage_name: 'Packing',
+      },
+      relations: { spk_detail: true },
+    });
+    const packed = Number(packingStage?.qty_in ?? 0);
+
+    // Ambil total qty_out dari DN pengiriman untuk spk_detail ini
+    const dnDetailsRepo = mgr.getRepository(DeliveryNoteDetailEntity);
+    const dnRows = await dnDetailsRepo.find({
+      where: { spk_detail: { id: spk_detail_id }, item_type: 'PRODUCT' },
+      relations: { delivery_note: true },
+    });
+    const shippedOut = dnRows
+      .filter((row) => {
+        const dn = row.delivery_note as DeliveryNoteEntity | undefined;
+        const type = (dn?.delivery_note_type || '').toLowerCase();
+        const isPengiriman = type.includes('pengiriman');
+        const notExcluded = excludeDeliveryNoteId ? (dn?.id !== excludeDeliveryNoteId) : true;
+        return isPengiriman && notExcluded;
+      })
+      .reduce((acc, row) => acc + Number(row.qty_out ?? 0), 0);
+
+    const remaining = packed - shippedOut;
+    return remaining > 0 ? remaining : 0;
   }
 
   async findAllHeaders(): Promise<import('../../../../core/domain/repositories/delivery-note.repository.interface').DeliveryNoteHeader[]> {
@@ -189,6 +228,9 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
         detail.qty_out = Number(d.qty_out) || 0;
         detail.qty_in = Number(d.qty_in) || 0;
         detail.labor_cost = Number(d.labor_cost ?? 0) || 0;
+        detail.cost_price = d.cost_price !== undefined && d.cost_price !== null
+          ? String(d.cost_price)
+          : null;
         detail.status = payload.status || 'OPEN';
         detail.created_by = payload.user_id || 'system';
 
@@ -264,6 +306,7 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
           if (d.qty_out !== undefined) existing.qty_out = Number(d.qty_out) || 0;
           if (d.qty_in !== undefined) existing.qty_in = Number(d.qty_in) || 0;
           if (d.labor_cost !== undefined) existing.labor_cost = Number(d.labor_cost) || 0;
+          if (d.cost_price !== undefined) existing.cost_price = d.cost_price !== null ? String(d.cost_price) : null;
           if (payload.status) existing.status = payload.status;
           existing.changed_by = payload.changed_by || 'system';
           existing.changed_dt = new Date();
@@ -297,6 +340,9 @@ export class DeliveryNoteRepository implements DeliveryNoteRepositoryInterface {
           detail.qty_out = Number(d.qty_out) || 0;
           detail.qty_in = Number(d.qty_in) || 0;
           detail.labor_cost = Number(d.labor_cost ?? 0) || 0;
+          detail.cost_price = d.cost_price !== undefined && d.cost_price !== null
+            ? String(d.cost_price)
+            : null;
           detail.status = payload.status || header.status;
           detail.created_by = payload.changed_by || 'system';
           await detailsRepo.save(detail);

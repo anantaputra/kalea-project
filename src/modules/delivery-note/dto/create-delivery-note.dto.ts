@@ -40,6 +40,9 @@ class DeliveryNoteDetailDto {
   // @IsNumberString()
   @IsOptional()
   labor_cost?: number | string;
+
+  @IsOptional()
+  hpp?: number | string;
 }
 
 export class CreateDeliveryNoteDto {

@@ -24,6 +24,7 @@ import { DeliveryNoteModule } from './modules/delivery-note/delivery-note.module
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MaterialStockModule } from './modules/material-stock/material-stock.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -38,6 +39,7 @@ import { MaterialStockModule } from './modules/material-stock/material-stock.mod
     }),
     SecurityModule,
     AuthModule,
+    DashboardModule,
     UserModule,
     SystemMasterModule,
     RoleModule,
