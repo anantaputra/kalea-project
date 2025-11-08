@@ -129,6 +129,7 @@ export class ProductVariantController {
           cost_price: '100000.00',
           materials: [
             {
+              bom_id: '8f3c3a7e-1b2c-4d5e-9f0a-123456789abc',
               material_id: 'f0e92c26-db2d-41a5-9324-723940003639',
               material_name: 'Benang Polyester 40/2',
               material_category: 'kain',
@@ -179,12 +180,13 @@ export class ProductVariantController {
               lang,
             );
             uomVal = uom?.system_value ?? uomCd;
-          }
-        } catch {
+        }
+      } catch {
           uomVal = uomCd;
         }
 
         return {
+          bom_id: i.id ?? null,
           material_id: i.material?.id ?? null,
           material_name: i.material?.material_name ?? null,
           material_category: catVal,
